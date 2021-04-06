@@ -21,12 +21,12 @@
 <!-- Main Container -->
 <div class="container"> 
   <!-- Navigation -->
-  <header> <a href="#">
+  <header> <a href="/">
     <h4 class="logo"><img src="../static/img/logo_blue.png" alt="" width="196"64" id="logo"/></h4>
     </a>
     <nav>
       <ul>
-        <li><a href="#home">HOME</a></li>
+        <li><a href="/">HOME</a></li>
         <li><a href="#about">ABOUT</a>        </li>
         <li></li>
       </ul>
@@ -36,21 +36,11 @@
   <section class="about" id="about">
     <h2 class="hidden">About</h2>
   </section>
-  <!-- Stats Gallery Section -->
-  
-        {%- for category, message in get_flashed_messages(with_categories = true) %}
-        <div>
-            {{ message }}
-        </div>
-        {%- endfor %}
+ <div>
+        <hr />
 
-
-
-        <h2 class="about"><span class="gallery">Upload new File</span></h2>
-        <form method=post enctype=multipart/form-data>
-            <input type=file name=file>
-            <input type=submit value=Upload>
-        </form>
+        <h1>Search Results</h1>
+        
 
         <div>
             <br>
@@ -60,6 +50,7 @@
             </form>
             <br>
         </div>
+        <hr />
         <div>
             Click to download
             <table>
@@ -77,6 +68,7 @@
             <hr />
 
         </div>
+    </div>
     </div>
   <!-- Parallax Section --><!-- More Info Section -->
   <footer></footer>
