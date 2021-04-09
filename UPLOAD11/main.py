@@ -19,6 +19,7 @@ from db_handler import db, db_init
 # Initialize the Flask application
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "./uploads/"
+# Upload folder permission need to be check and full read write
 ALLOWED_EXTENSIONS = {"txt", "doc", "docx", "xls", "xlsx", "pdf", "png", "jpg", "jpeg", "gif","csv"}
 #app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
@@ -77,7 +78,7 @@ def search():
     else:
         return redirect('/')
 
-    
+
 
 if __name__ == "__main__":
     app.run(debug=True)
