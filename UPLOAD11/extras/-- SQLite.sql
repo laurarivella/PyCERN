@@ -1,2 +1,0 @@
--- SQLite
-file.query.all()
