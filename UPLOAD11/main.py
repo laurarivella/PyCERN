@@ -256,6 +256,17 @@ def search():
         return render_template("search.html", filenames=filenames)
     else:
         return redirect('/')
+        
+@app.route("/delete/<int:id>",methods=['POST'])
+def delete(id):
+     filename_to_delete = models.files.query.get_or_404(id)
+     try:
+         db.session.delete(filename_to_delete)
+         db.session.commit()
+         return redirect('/')
+     except:
+        return "Error deleting file"
+
 
 @app.route("/logout")
 def logout():
