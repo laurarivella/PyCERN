@@ -1,5 +1,5 @@
-import os, hashlib
-from flask_login import LoginManager, login_user, current_user
+import os, hashlib, re
+from flask_login import LoginManager, login_user, current_user, logout_user
 from sqlalchemy import Column, String, BINARY, INTEGER, TEXT, DATETIME
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -50,7 +50,7 @@ app.config.update(
 # SAMESITE restricts how cookies are sent with requests from external sites
     SESSION_COOKIE_SAMESITE='Lax',
 )
-response.set_cookie('username', 'flask', secure=True, httponly=True, samesite='Lax')
+#response.set_cookie('username', 'flask', secure=True, httponly=True, samesite='Lax')
 
 #db_init(app)
 
@@ -134,6 +134,25 @@ class UploadedFile(Base):
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# password complexity minimum requirements: 8 characters long, 1 number, 1 symbol , 1 lower case letter, 1 upper case letter
+def password_check(password):
+
+    length_error = len(password) < 8
+    digit_error = re.search(r"\d", password) is None
+    uppercase_error = re.search(r"[A-Z]", password) is None
+    lowercase_error = re.search(r"[a-z]", password) is None
+    symbol_error = re.search(r"\W", password) is None
+    password_ok = not ( length_error or digit_error or uppercase_error or lowercase_error or symbol_error )
+
+    return {
+        'password_ok' : password_ok,
+        'length_error' : length_error,
+        'digit_error' : digit_error,
+        'uppercase_error' : uppercase_error,
+        'lowercase_error' : lowercase_error,
+        'symbol_error' : symbol_error,
+    }
+
 @login_manager.user_loader
 def load_user(user_id):
     return get_user(user_id)
@@ -153,31 +172,14 @@ def register_user():
 @app.route('/register/', methods=['POST'])
 def register_user_post():
     username = request.form.get('username')
-
-# password complexity minimum requirements: 8 characters long, 1 number, 1 symbol , 1 lower case letter, 1 upper case letter 
-def password_check(password):
-
-    length_error = len(password) < 8
-    digit_error = re.search(r"\d", password) is None
-    uppercase_error = re.search(r"[A-Z]", password) is None
-    lowercase_error = re.search(r"[a-z]", password) is None
-    symbol_error = re.search(r"\W", password) is None
-    password_ok = not ( length_error or digit_error or uppercase_error or lowercase_error or symbol_error )
-
-    return {
-        'password_ok' : password_ok,
-        'length_error' : length_error,
-        'digit_error' : digit_error,
-        'uppercase_error' : uppercase_error,
-        'lowercase_error' : lowercase_error,
-        'symbol_error' : symbol_error,
-    }
-
     password = request.form.get('password')
     confirm_password = request.form.get('confirmpassword')
 
-    success = register_user(username, password, confirm_password)
+    if not password_check(password).get("password_ok"):
+        flash("Password not secure enough")
+        return render_template("register.html")
 
+    success = register_user(username, password, confirm_password)
 
     if success:
         flash("Registration Successful!")
@@ -187,6 +189,9 @@ def password_check(password):
 
 @app.route('/login/')
 def login_user_route():
+    if current_user.is_authenticated:
+        flash("Welcome back " + current_user.ID + "!")
+        return redirect(url_for("upload_file"))
     return render_template('login.html')
 
 @app.route('/login/', methods=['POST'])
@@ -246,6 +251,12 @@ def search():
     else:
         return redirect('/')
 
+@app.route("/logout")
+def logout():
+    logout_user()
+
+    return redirect(url_for("index"))
+
 
 def validate_login(username, password):
     "Checks the database for the supplied login credentials"
@@ -284,6 +295,10 @@ def register_user(username, password, confirmPassword):
     session = Session()
 
     q = session.query(User).filter_by(ID=username)
+
+    if not password_check(password):
+        flash("Password not secure enough.")
+        return
 
     # If the select statement found an existing user, count will return 1
     if q.count() > 0:
