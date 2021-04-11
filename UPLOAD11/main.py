@@ -1,4 +1,9 @@
-import os
+import os, hashlib
+from flask_login import LoginManager, login_user, current_user
+from sqlalchemy import Column, String, BINARY, INTEGER, TEXT, DATETIME
+from sqlalchemy import MetaData, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, query
 
 from flask import (
     Flask,
@@ -24,6 +29,11 @@ app.config["UPLOAD_FOLDER"] = "./uploads/"
 # Upload folder permission need to be check and full read write
 ALLOWED_EXTENSIONS = {"txt", "doc", "docx", "xls", "xlsx", "pdf", "png", "jpg", "jpeg", "gif","csv"}
 #app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+
+Base = declarative_base()
+
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 # DB
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True
@@ -59,17 +69,113 @@ class files(db.Model):
     #    self.url = url
     #    self.created_date = datetime.datetime.now()
 
+#Defines the USERS table in the database for SQLAlchemy
+class User(Base):
+    __tablename__ = 'USERS'
+
+    ID = Column(String, primary_key=True)
+    PASSWORD = Column(BINARY)
+    SALT = Column(BINARY)
+
+    def __repr__(self):
+        return f'User {self.ID}'
+
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return self.ID
+
+#Defines the uploads table in the database for SQLAlchemy
+class UploadedFile(Base):
+    __tablename__ = 'uploads'
+
+    file_id = Column(INTEGER, primary_key=True)
+    name = Column(TEXT)
+    url = Column(TEXT)
+    created_date = Column(DATETIME)
+    edited_date = Column(DATETIME)
+    creator_id = Column(TEXT)
+    editor_id = Column(TEXT)
+
+    def __repr__(self):
+        return f'UploadedFile {self.file_id}'
+
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return self.file_id
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@login_manager.user_loader
+def load_user(user_id):
+    return get_user(user_id)
 
 @app.route("/downloads/<filename>")
 def download_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-@app.route("/", methods=["GET", "POST"])
+@app.route('/register/')
+def register_user():
+    return render_template('register.html')
+
+@app.route('/register/', methods=['POST'])
+def register_user_post():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    confirm_password = request.form.get('confirmpassword')
+
+    success = register_user(username, password, confirm_password)
+
+
+    if success:
+        flash("Registration Successful!")
+        return redirect(url_for('login_user_route'))
+
+    return redirect(url_for('register_user'))
+
+@app.route('/login/')
+def login_user_route():
+    return render_template('login.html')
+
+@app.route('/login/', methods=['POST'])
+def login_user_post():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    success = validate_login(username, password)
+
+    if success:
+        login_user(get_user(username))
+
+        flash(current_user.__repr__() + " login successful!")
+        next = 'upload_file'
+    else:
+        flash("Username or password incorrect. Please try again.")
+        next = 'login_user_route'
+
+    return redirect(url_for(next))
+
+@app.route("/files", methods=["GET", "POST"])
 def upload_file():
 
     if request.method == "POST":
@@ -108,6 +214,103 @@ def search():
     else:
         return redirect('/')
 
+
+def validate_login(username, password):
+    "Checks the database for the supplied login credentials"
+    db = create_engine('sqlite:///users2.db')
+    db.echo = True
+
+    metadata = MetaData(db)
+
+    Session = sessionmaker(bind=db)
+    session = Session()
+
+    q = session.query(User).filter_by(ID=username)
+
+    # If the select statement found no match for the username, count will return 0
+    if q.count() <= 0:
+        print("User not found. Please check your spelling and try again, or register a new user.\n")
+        return False
+
+    key = q.first().PASSWORD
+    salt = q.first().SALT
+
+    # Check if the supplied hashed password matches the stored hashed password
+    if key != hash_password(password, salt)[0]:
+        return False
+
+    return True
+
+def register_user(username, password, confirmPassword):
+    # Check the database to see if the entered username is already taken
+    db = create_engine('sqlite:///users2.db')
+    db.echo = True
+
+    metadata = MetaData(db)
+
+    Session = sessionmaker(bind=db)
+    session = Session()
+
+    q = session.query(User).filter_by(ID=username)
+
+    # If the select statement found an existing user, count will return 1
+    if q.count() > 0:
+        flash("User already exists. Please login or choose a different Username.\n")
+        return False
+
+    if password != confirmPassword:
+        flash("Error: passwords didn't match. Please try registering again.")
+        return False
+
+    passAndSalt = hash_password(password)
+
+    insert_new_user(username, passAndSalt[0], passAndSalt[1])
+
+    return True
+
+def insert_new_user(username, password, salt):
+    db = create_engine('sqlite:///users2.db')
+    db.echo = True
+
+    metadata = MetaData(db)
+
+    user = User(ID=username, PASSWORD=password, SALT=salt)
+
+    Session = sessionmaker(bind=db)
+    session = Session()
+
+    session.add(user)
+    session.commit()
+
+    return
+
+def get_user(username):
+    db = create_engine('sqlite:///users2.db')
+    db.echo = True
+
+    metadata = MetaData(db)
+
+    Session = sessionmaker(bind=db)
+    session = Session()
+
+    q = session.query(User).filter_by(ID=username)
+
+    if q.count() < 1:
+        return None
+
+    return q[0]
+
+#If no salt is given, returns a new random salt with the hashed password.
+#Otherwise, hashes the password with the supplied salt.
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = os.urandom(16)
+
+    pass_bytes = salt + password.encode()
+
+    key = hashlib.sha256(pass_bytes).digest()
+
+    return key, salt
 
 
 if __name__ == "__main__":

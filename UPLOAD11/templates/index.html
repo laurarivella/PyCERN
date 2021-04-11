@@ -1,0 +1,6 @@
+{% extends "layout.html" %}
+{% block body %}
+  <h1>Overview</h1>
+  <p>Do you want to <a href="{{ url_for('login_user_route') }}">log in?</a>
+    <p>Or <a href="{{ url_for('register_user') }}">register a new account?</a>
+{% endblock %}
