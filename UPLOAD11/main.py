@@ -1,5 +1,5 @@
 import os, hashlib
-from flask_login import LoginManager, login_user, current_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import Column, String, BINARY, INTEGER, TEXT, DATETIME
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -60,7 +60,7 @@ response.set_cookie('username', 'flask', secure=True, httponly=True, samesite='L
 #    self.url = url
 #    self.created_date = datetime.datetime.now()
 
-    # Creates the logs tables if the db doesnt already exist
+# Creates the logs tables if the db doesnt already exist
 #    with app.app_context():
 #        db.create_all()
 
@@ -208,6 +208,7 @@ def login_user_post():
     return redirect(url_for(next))
 
 @app.route("/files", methods=["GET", "POST"])
+@login_required
 def upload_file():
 
     if request.method == "POST":
