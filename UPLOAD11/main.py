@@ -153,6 +153,26 @@ def register_user():
 @app.route('/register/', methods=['POST'])
 def register_user_post():
     username = request.form.get('username')
+
+# password complexity minimum requirements: 8 characters long, 1 number, 1 symbol , 1 lower case letter, 1 upper case letter 
+def password_check(password):
+
+    length_error = len(password) < 8
+    digit_error = re.search(r"\d", password) is None
+    uppercase_error = re.search(r"[A-Z]", password) is None
+    lowercase_error = re.search(r"[a-z]", password) is None
+    symbol_error = re.search(r"\W", password) is None
+    password_ok = not ( length_error or digit_error or uppercase_error or lowercase_error or symbol_error )
+
+    return {
+        'password_ok' : password_ok,
+        'length_error' : length_error,
+        'digit_error' : digit_error,
+        'uppercase_error' : uppercase_error,
+        'lowercase_error' : lowercase_error,
+        'symbol_error' : symbol_error,
+    }
+
     password = request.form.get('password')
     confirm_password = request.form.get('confirmpassword')
 
