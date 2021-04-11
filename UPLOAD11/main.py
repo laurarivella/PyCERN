@@ -41,6 +41,17 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///upload_db.sqlite3"
 #sqlite with 3 slashes is for reletive path of the database
 app.config["SECRET_KEY"] = "random string"
 
+# Options added to improve cookie security
+app.config.update(
+# SECURE limits cookies to HTTPS traffic only
+    SESSION_COOKIE_SECURE=True,
+# HTTPONLY protects the contents of cookies from being read with JavaScript
+    SESSION_COOKIE_HTTPONLY=True,
+# SAMESITE restricts how cookies are sent with requests from external sites
+    SESSION_COOKIE_SAMESITE='Lax',
+)
+response.set_cookie('username', 'flask', secure=True, httponly=True, samesite='Lax')
+
 #db_init(app)
 
 # Function that initializes the db and creates the tables
@@ -76,6 +87,7 @@ class User(Base):
     ID = Column(String, primary_key=True)
     PASSWORD = Column(BINARY)
     SALT = Column(BINARY)
+    is_admin = db.Column(db.Boolean, default = False)
 
     def __repr__(self):
         return f'User {self.ID}'
