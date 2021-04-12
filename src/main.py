@@ -388,7 +388,7 @@ def delete_multiple():
             if key.startswith('delete_'):
                 id = key.split('_')[1]
                 ids.append(id)
-                
+
         files_to_delete = Files.query.filter(Files.id.in_(ids))
 
         # check a non admin is only trying to delete their own files
@@ -430,7 +430,7 @@ def edit(id):
 
     if request.method == 'GET':
         # add form for updating an element
-        return render_template('edit.html', subs=build_subs('Edit ' + str(id)), file=file)
+        return render_template('edit.html', subs=build_subs(f"Edit {file.name} #{str(id)}"), file=file)
 
 
 @app.route("/permission_denied")
@@ -455,6 +455,14 @@ def admin():
         return render_template('admin.html', subs=build_subs('Admin'), admins=admins, staff=staff, users=users, files=files)
     else:
         return render_template('permission_denied.html', subs=build_subs('Admin'))
+
+@app.route("/manage_files")
+@login_required
+def manage_files():
+    if not current_user.is_admin:
+        redirect("/permission_denied")
+    files = Files.query.all()
+    return render_template("my_files.html", subs=build_subs("Manage All Files"), files=files)
 
 @app.route("/admin/<action>/<level>/<id>")
 @login_required

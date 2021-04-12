@@ -2,6 +2,10 @@
 
 {% block body %}
 
+<a href="/manage_files" style="width:100%"><button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent" style="width:100%">
+  Manage Files
+</button></a>
+
 <div class="accordion accordion-flush" id="accordionFlushExample" style="width:100%">
     <div class="accordion-item">
       <h2 class="accordion-header" id="flush-headingOne">
@@ -89,35 +93,6 @@
                     {% endfor %}
                 </tbody>
               </table>
-          </div>
-        </div>
-      </div>
-      <div class="accordion-item">
-        <h2 class="accordion-header" id="flush-headingFour">
-          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseFour" aria-expanded="false" aria-controls="flush-collapseFour">
-            Files
-          </button>
-        </h2>
-        <div id="flush-collapseFour" class="accordion-collapse collapse" aria-labelledby="flush-headingFour" data-bs-parent="#accordionFlushExample">
-          <div class="accordion-body">
-            <table class="table">
-            <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th> creator</th>
-                  <th> delete</th>
-                </tr>
-              </thead>
-              <tbody>
-                  {% for a in files %}
-                  <tr>
-                      <td>{{a.name}}</td>
-                      <td>{{a.creator_id}}</td>
-                      <td><a href="/delete/{{a.id}}"><button class="btn btn-danger">Delete</button></a></td>
-                  </tr>
-                  {% endfor %}
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
