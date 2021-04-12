@@ -2,46 +2,51 @@
 
 {% block body %}
 
+{% if error %}
+<div class="alert alert-warning" role="alert">
+    {{ error }}
+</div>
+{% endif %}
+
 <div class="mdl-cell mdl-cell--12-col mdl-card mdl-shadow--2dp" style="width:100%">
-    <form action="/upload" method="POST">
+    <form action="/upload" method="POST" style="width:100%">
     <div class="mdl-card__title">
       <h2 class="mdl-card__title-text"> Add a link to an external file</h2>
     </div>
-    <div class="mdl-card__supporting-text">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+    <div class="mdl-card__supporting-text" style="width:100%">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:100%">
             <input class="mdl-textfield__input" type="text" name="name" id="name">
             <label class="mdl-textfield__label" for="name">File name</label>
         </div>
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:100%">
             <input class="mdl-textfield__input" type="text" name="url" id="url">
             <label class="mdl-textfield__label" for="url">Link to file</label>
         </div>
     </div>
-    <div class="mdl-card__actions mdl-card--border">
-        <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:70%">
+    <div class="mdl-card__actions mdl-card--border" style="width:100%">
+        <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:100%">
             Add link
         </button>
     </div>
     </form>
 </div>
 
-<div class="mdl-cell mdl-cell--12-col mdl-card mdl-shadow--2dp">
-    <form action="/upload" method="POST">
+<div class="mdl-cell mdl-cell--12-col mdl-card mdl-shadow--2dp" style="width:100%">
+    <form action="/upload" method="POST" enctype="multipart/form-data" style="width:100%">
     <div class="mdl-card__title">
       <h2 class="mdl-card__title-text"> Upload a file</h2>
     </div>
     <div class="mdl-card__supporting-text">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:100%">
             <input class="mdl-textfield__input" type="text" name="name" id="name">
             <label class="mdl-textfield__label" for="name">File name</label>
         </div>
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <div class="mdl-textfield mdl-js-textfield--file"  style="width:100%">
             <input class="mdl-textfield__input" type="file" name="file" id="file">
-            <label class="mdl-textfield__label" for="file">File to upload</label>
         </div>
     </div>
     <div class="mdl-card__actions mdl-card--border">
-        <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:70%">
+        <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:100%">
             Upload
         </button>
     </div>
