@@ -11,20 +11,24 @@
       </h2>
       <div id="flush-collapseOne" class="accordion-collapse collapse" aria-labelledby="flush-headingOne" data-bs-parent="#accordionFlushExample">
         <div class="accordion-body">
-            <table class="table">
-                <thead>
-                  <tr>
-                    <th scope="col">username</th>
-                  </tr>
-                </thead>
-                <tbody>
-                    {% for a in admins %}
-                    <tr>
-                        <td>{{a.id}}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-              </table>
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">username</th>
+                <th> demote to staff</th>
+                <th> delete account</th>
+              </tr>
+            </thead>
+            <tbody>
+                {% for a in admins %}
+                <tr>
+                    <td>{{a.id}}</td>
+                    <td><a href="/admin/demote/staff/{{a.id}}"><button class="btn btn-warning">Demote</button></a></td>
+                    <td><a href="/admin/delete/user/{{a.id}}"><button class="btn btn-danger">Delete</button></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
