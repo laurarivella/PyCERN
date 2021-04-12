@@ -376,15 +376,32 @@ def delete(id):
     except:
         return "Error deleting file"
 
-@app.route('/delete', methods=['GET', 'POST'])
-def delete(): 
-    print('delete')  
-    if request.method == 'POST': 
-        print(request.form.getlist('mycheckbox'))
-        getids=request.form.getlist('mycheckbox')
-        files.query.filter(files.id.in_(getids)).delete(synchronize_session='fetch')
+@app.route('/delete', methods=['POST'])
+@login_required
+def delete_multiple(): 
+    if not (current_user.is_staff or current_user.is_admin):
+        redirect('/permission_denied')
+    if request.method == 'POST':
+        f = request.form
+        ids = []
+        for key in f.keys():
+            if key.startswith('delete_'):
+                id = key.split('_')[1]
+                ids.append(id)
+                
+        files_to_delete = Files.query.filter(Files.id.in_(ids))
+
+        # check a non admin is only trying to delete their own files
+        if not current_user.is_admin:
+            for a in files_to_delete:
+                if a.creator_id != current_user.id:
+                    return redirect('/permission_denied')
+        
+        for a in files_to_delete:
+            db.session.delete(a)
+
         db.session.commit()
-    return redirect('/')
+    return redirect('/my_files')
 
 
 @app.route("/edit/<int:id>", methods=["POST", "GET"])

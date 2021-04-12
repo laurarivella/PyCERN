@@ -7,6 +7,10 @@
 </div>
 {% endif %}
 {% if files %}
+<form action="/delete" method="POST" style="width:100%">
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent" type="submit" style="width:100%">
+  Delete Selected
+</button>
 {% for file in files %}
 
 <div class="mdl-cell mdl-cell--12-col mdl-card mdl-shadow--2dp">
@@ -29,7 +33,13 @@
         Delete 
       </a>
     </div>
+    <div class="mdl-card__menu">
+      <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="delete_{{file.id}}">
+        <input type="checkbox" name="delete_{{file.id}}" id="delete_{{file.id}}" class="mdl-checkbox__input" value=True>
+      </label>
+    </div>
 </div>
 {% endfor %}
+</form>
 {% endif %}
 {% endblock %}
