@@ -376,6 +376,17 @@ def delete(id):
     except:
         return "Error deleting file"
 
+@app.route('/delete', methods=['GET', 'POST'])
+def delete(): 
+    print('delete')  
+    if request.method == 'POST': 
+        print(request.form.getlist('mycheckbox'))
+        getids=request.form.getlist('mycheckbox')
+        files.query.filter(files.id.in_(getids)).delete(synchronize_session='fetch')
+        db.session.commit()
+    return redirect('/')
+
+
 @app.route("/edit/<int:id>", methods=["POST", "GET"])
 @login_required
 def edit(id):
