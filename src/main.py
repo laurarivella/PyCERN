@@ -285,6 +285,8 @@ def files():
 @app.route("/my_files")
 @login_required
 def my_files():
+    if not (current_user.is_staff or current_user.is_admin):
+        return render_template('permission_denied.html', subs=build_subs('My Files'))
     filenames = Files.query.filter(Files.creator_id == current_user.id)
     return render_template("my_files.html", subs = build_subs('Files'), files=filenames)
 
