@@ -1,33 +1,30 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
+{% block body %}
 
+{% if error != "" %}
+<div class="alert alert-warning" role="alert">
+    {{ error }}
+</div>
+{% endif %}
 
-{% block header %}
-  <h1>{% block title %}Register{% endblock %}</h1>
-{% endblock %}
+<form action="/register" method="post" style="width:90%">
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label" style="width:70%">
+      <input class="mdl-textfield__input" type="text" name="username" id="username">
+      <label class="mdl-textfield__label" for="username">Username</label>
+    </div>
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <input class="mdl-textfield__input" type="password" name="password" id="password">
+        <label class="mdl-textfield__label" for="password">Password...</label>
+    </div>
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <input class="mdl-textfield__input" type="password" name="confirmpassword" id="confirmpassword">
+        <label class="mdl-textfield__label" for="confirmpassword">Confirm Password</label>
+    </div>
+    <!-- Accent-colored raised button -->
+    <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:70%">
+    Register
+   </button>
+</form>
 
-
-
-
-{% block content %}
-
-  <form method="post">
-    <label for="username">Username</label>
-    <input name="username" id="username" required>
-    <label for="password">Password</label>
-    <input type="password" name="password" id="password" required>
-    <label for="confirmpassword">Confirm Password</label>
-    <input type="password" name="confirmpassword" id="confirmpassword" required>
-    <input type="submit" value="register">
-  </form>
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
 {% endblock %}

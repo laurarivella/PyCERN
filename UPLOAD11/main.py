@@ -1,10 +1,7 @@
-<<<<<<< HEAD
-import os, hashlib
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-=======
-import os, hashlib, re
-from flask_login import LoginManager, login_user, current_user, logout_user
->>>>>>> main
+import os, hashlib, re, datetime
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.utils import secure_filename
 from sqlalchemy import Column, String, BINARY, INTEGER, TEXT, DATETIME
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -20,121 +17,175 @@ from flask import (
     session,
     url_for
 )
-#from db_handler import db
-import datetime
 
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
+"""
+Admin user hard-coded in to begin - username: 'admin' password: 'Admin123'
+"""
 
-#import models
+#If no salt is given, returns a new random salt with the hashed password.
+#Otherwise, hashes the password with the supplied salt.
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = os.urandom(16)
+
+    pass_bytes = salt + password.encode()
+
+    key = hashlib.sha256(pass_bytes).digest()
+
+    return key, salt
+
+# Build a substitution dictionary to pass to the template
+def build_subs(page=None):
+    # Get information about current logged in user for template
+    if current_user.is_authenticated:
+        logged_in = True
+        user = current_user.id
+        is_admin = current_user.is_admin
+        is_staff = current_user.is_staff
+    else:
+        # Default info if no one is logged in
+        logged_in = False
+        user = ""
+        role = None
+        is_admin = False
+        is_staff = False
+    subs = {
+        'page': page,
+        'user': user,
+        'logged_in': logged_in,
+        'is_admin': is_admin,
+        'is_staff': is_staff,
+    }
+    return subs
+
+# Enable class based application config
+class ConfigClass(object):
+    """Flask app config"""
+
+    SECRET_KEY = "random string"
+    UPLOAD_FOLDER = "./uploads/"
+
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///main_db.sqlite3"
+
+    # Settings for improving cookie security
+    SESSION_COOKIE_SECURE=True
+    SESSION_COOKIE_HTTPONLY=True
+    SESSION_COOKIE_SAMESITE='Lax'
+
 
 # Initialize the Flask application
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "./uploads/"
+
+# Use a config class to improve readability 
+app.config.from_object(__name__+'.ConfigClass')
+
 # Upload folder permission need to be check and full read write
 ALLOWED_EXTENSIONS = {"txt", "doc", "docx", "xls", "xlsx", "pdf", "png", "jpg", "jpeg", "gif","csv"}
-#app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 Base = declarative_base()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-# DB
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///upload_db.sqlite3"
-#sqlite with 3 slashes is for reletive path of the database
-app.config["SECRET_KEY"] = "random string"
-
-# Options added to improve cookie security
-app.config.update(
-# SECURE limits cookies to HTTPS traffic only
-    SESSION_COOKIE_SECURE=True,
-# HTTPONLY protects the contents of cookies from being read with JavaScript
-    SESSION_COOKIE_HTTPONLY=True,
-# SAMESITE restricts how cookies are sent with requests from external sites
-    SESSION_COOKIE_SAMESITE='Lax',
-)
-#response.set_cookie('username', 'flask', secure=True, httponly=True, samesite='Lax')
-
-#db_init(app)
-
-# Function that initializes the db and creates the tables
-#def __init__(self, name, url):
-#    self.name = name
-#    self.url = url
-#    self.created_date = datetime.datetime.now()
-
-# Creates the logs tables if the db doesnt already exist
-#    with app.app_context():
-#        db.create_all()
-
 db = SQLAlchemy(app)
 
-class files(db.Model):
+# Defines the `files` table in the database for SQLAlchemy
+class Files(db.Model):
+    __tablename__ = 'files'
+
     id = db.Column("file_id", db.Integer, primary_key=True)
-    #setup primary key
     name = db.Column(db.String(100))
-    #Name with 100 charater string
     url = db.Column(db.String(200))
     created_date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    #seutp default time of creating at the time of upload
+    creator_id = db.Column(db.String(100, collation='NOCASE'), nullable=False)
 
-    #def __init__(self, name, url):
-    #    self.name = name
-    #    self.url = url
-    #    self.created_date = datetime.datetime.now()
+#D efines the `users` table in the database for SQLAlchemy
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
 
-#Defines the USERS table in the database for SQLAlchemy
-class User(Base):
-    __tablename__ = 'USERS'
+    id = db.Column(db.String(100, collation='NOCASE'), nullable=False, unique=True, primary_key=True)
+    password = db.Column(db.LargeBinary(), nullable=False, server_default='')
+    salt = db.Column(db.LargeBinary(), nullable=False, server_default='')
+    is_admin = db.Column(db.Boolean(), nullable=False, server_default='0')
+    is_staff = db.Column(db.Boolean(), nullable=False, server_default='0')
+    active = db.Column('is_active', db.Boolean(), nullable=False, server_default='1')
 
-    ID = Column(String, primary_key=True)
-    PASSWORD = Column(BINARY)
-    SALT = Column(BINARY)
-    is_admin = db.Column(db.Boolean, default = False)
+    # rewrote user class to be a different format to use the UserMixin
+    # TODO remove this comment - just here to show change incase i break everything
+    # ID = Column(String, primary_key=True)
+    # PASSWORD = Column(BINARY)
+    # SALT = Column(BINARY)
+    # is_admin = db.Column(db.Boolean, default = False)
 
-    def __repr__(self):
-        return f'User {self.ID}'
+    # def __repr__(self):
+    #     return f'User {self.ID}'
 
-    def is_authenticated(self):
-        return True
+    # def is_authenticated(self):
+    #     return True
 
-    def is_active(self):
-        return True
+    # def is_active(self):
+    #     return True
 
-    def is_anonymous(self):
-        return False
+    # def is_anonymous(self):
+    #     return False
 
-    def get_id(self):
-        return self.ID
+    # def get_id(self):
+    #     return self.ID
+
 
 #Defines the uploads table in the database for SQLAlchemy
-class UploadedFile(Base):
+class UploadedFile(db.Model):
     __tablename__ = 'uploads'
 
-    file_id = Column(INTEGER, primary_key=True)
-    name = Column(TEXT)
-    url = Column(TEXT)
-    created_date = Column(DATETIME)
-    edited_date = Column(DATETIME)
-    creator_id = Column(TEXT)
-    editor_id = Column(TEXT)
+    file_id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(255))
+    url = db.Column(db.String(255))
+    created_date = db.Column(db.DateTime())
+    edited_date = db.Column(db.DateTime())
+    creator_id = db.Column(db.String(255))
+    editor_id = db.Column(db.String(255))
 
-    def __repr__(self):
-        return f'UploadedFile {self.file_id}'
+    # rewrote to be same format as other definitions
+    # TODO remove this comment - just here to show change incase i break everything
+    # file_id = Column(INTEGER, primary_key=True)
+    # name = Column(TEXT)
+    # url = Column(TEXT)
+    # created_date = Column(DATETIME)
+    # edited_date = Column(DATETIME)
+    # creator_id = Column(TEXT)
+    # editor_id = Column(TEXT)
 
-    def is_authenticated(self):
-        return True
+    # def __repr__(self):
+    #     return f'UploadedFile {self.file_id}'
 
-    def is_active(self):
-        return True
+    # def is_authenticated(self):
+    #     return True
 
-    def is_anonymous(self):
-        return False
+    # def is_active(self):
+    #     return True
 
-    def get_id(self):
-        return self.file_id
+    # def is_anonymous(self):
+    #     return False
+
+    # def get_id(self):
+    #     return self.file_id
+
+
+db.create_all()
+
+#  Hardcode an admin user into the database
+p,s = hash_password('Admin123')
+if not User.query.filter(User.id == 'admin').first():
+    user = User(
+        id='admin',
+        password=p,
+        salt=s,
+        is_admin = True,
+        is_staff = True
+    )
+    db.session.add(user)
+    db.session.commit()
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -158,9 +209,10 @@ def password_check(password):
         'symbol_error' : symbol_error,
     }
 
+
 @login_manager.user_loader
 def load_user(user_id):
-    return get_user(user_id)
+    return User.query.get(user_id)
 
 @app.route("/downloads/<filename>")
 def download_file(filename):
@@ -168,11 +220,11 @@ def download_file(filename):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', subs=build_subs('Home'))
 
 @app.route('/register/')
 def register_user():
-    return render_template('register.html')
+    return render_template('register.html', subs=build_subs('Register'), error = "")
 
 @app.route('/register/', methods=['POST'])
 def register_user_post():
@@ -181,47 +233,86 @@ def register_user_post():
     confirm_password = request.form.get('confirmpassword')
 
     if not password_check(password).get("password_ok"):
-        flash("Password not secure enough")
-        return render_template("register.html")
+        # flash("Password not secure enough")
+        return render_template("register.html", subs=build_subs('Regsistration failed'), error="Password not secure enough")
 
-    success = register_user(username, password, confirm_password)
-
-    if success:
-        flash("Registration Successful!")
-        return redirect(url_for('login_user_route'))
-
-    return redirect(url_for('register_user'))
-
-@app.route('/login/')
-def login_user_route():
-    if current_user.is_authenticated:
-        flash("Welcome back " + current_user.ID + "!")
-        return redirect(url_for("upload_file"))
-    return render_template('login.html')
-
-@app.route('/login/', methods=['POST'])
-def login_user_post():
-    username = request.form.get('username')
-    password = request.form.get('password')
-
-    success = validate_login(username, password)
+    # Pass the error back if there is one
+    success, error = register_user(username, password, confirm_password)
 
     if success:
-        login_user(get_user(username))
+        return render_template('login.html', subs=build_subs("Registration Successful"))
 
-        flash(current_user.__repr__() + " login successful!")
-        next = 'upload_file'
-    else:
-        flash("Username or password incorrect. Please try again.")
-        next = 'login_user_route'
+    return render_template("register.html", subs=build_subs('Regsistration'), error=error)
 
-    return redirect(url_for(next))
+# @app.route('/login/')
+# def login_user_route():
+#     # if current_user.is_authenticated:
+#     #     flash("Welcome back " + current_user.id + "!")
+#     #     return redirect(url_for("upload_file"))
 
-@app.route("/files", methods=["GET", "POST"])
+#     return render_template('login.html', subs=build_subs('Login'))
+
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        success = validate_login(username, password)
+
+        if success:
+            login_user(get_user(username))
+        return render_template("index.html", subs=build_subs('Home'))
+
+        # USE the new render templates    
+            # flash(current_user.__repr__() + " login successful!")
+            # next = 'upload_file'
+        # else:
+        #     # flash("Username or password incorrect. Please try again.")
+        #     # next = 'login_user_route'
+
+        # return redirect(url_for(next))
+    elif request.method == 'GET':
+        return render_template('login.html', subs=build_subs('Login'))
+
+@app.route("/files")
 @login_required
-def upload_file():
+def files():
+    filenames = Files.query.all()
+    return render_template("all_files.html", subs = build_subs('Files'), files=filenames)
 
-    if request.method == "POST":
+@app.route("/my_files")
+@login_required
+def my_files():
+    filenames = Files.query.filter(Files.creator_id == current_user.id)
+    return render_template("my_files.html", subs = build_subs('Files'), files=filenames)
+
+@app.route("/upload", methods=["GET", "POST"])
+@login_required
+def upload():
+    if not (current_user.is_staff or current_user.is_admin):
+        return render_template('permission_denied.html', subs=build_subs('Upload'))
+
+    if request.method == 'GET':
+        # return form for uploading a file
+        return render_template('upload.html', subs=build_subs('Upload'))
+
+    if request.method == 'POST':
+        # process upload
+        name = request.form.get('name')
+        url = request.form.get('url')
+
+        if url:
+            file_obj = Files(
+                name=name,
+                url=url,
+                created_date=datetime.datetime.now(),
+                creator_id=current_user.id
+            )
+            db.session.add(file_obj)
+            db.session.commit()
+            return redirect('/my_files')
+
         # check if the post request has the file part
         if "file" not in request.files:
             flash("No file part", "error")
@@ -235,65 +326,117 @@ def upload_file():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-            file_obj = files(
-                filename, url_for("download_file", filename=filename)
+            file_obj = Files(
+                filename, url_for("download_file", files=filename)
             )
             db.session.add(file_obj)
             db.session.commit()
             flash("Record was successfully added")
 
-    filenames = files.query.all()
-    return render_template("upload.html", filenames=filenames)
 
 @app.route("/search", methods=["GET", "POST"])
+@login_required
 def search():
-
     if request.method == "POST":
         form = request.form
         search_value = form['search_string']
         search = f"%{search_value}%"
-        filenames = files.query.filter(files.name.like(search)).all()
-        return render_template("search.html", filenames=filenames)
+        filenames = Files.query.filter(Files.name.like(search)).all()
+        return render_template("search.html", subs=build_subs('Search'), files=filenames)
     else:
         return redirect('/')
         
-@app.route("/delete/<int:id>",methods=['POST'])
+@app.route("/delete/<int:id>")
+@login_required
 def delete(id):
-     filename_to_delete = models.files.query.get_or_404(id)
-     try:
-         db.session.delete(filename_to_delete)
-         db.session.commit()
-         return redirect('/')
-     except:
+    if not (current_user.is_staff or current_user.is_admin):
+        return redirect('/permission_denied')
+
+    # filename_to_delete = models.files.query.get_or_404(id)
+    file = Files.query.filter(Files.id == id).first()
+
+    if (file.creator_id != current_user.id) and not current_user.is_admin:
+        return redirect('/permission_denied')        
+
+    try:
+        db.session.delete(file)
+        db.session.commit()
+        return redirect('/my_files')
+    except:
         return "Error deleting file"
+
+@app.route("/edit/<int:id>", methods=["POST", "GET"])
+@login_required
+def edit(id):
+    if not (current_user.is_staff or current_user.is_admin):
+        return redirect('/permission_denied')
+
+    # filename_to_delete = models.files.query.get_or_404(id)
+    file = Files.query.filter(Files.id == id).first()
+
+    if (file.creator_id != current_user.id) and not current_user.is_admin:
+        return redirect('/permission_denied')  
+
+    if request.method == 'POST':
+        new_url = request.form.get('new_url')
+        new_title = request.form.get('new_title')
+      
+        if new_title != None: 
+            file.title = new_title
+        if new_url != None:
+            file.url = new_url
+
+        db.session.update(file)
+        db.session.commit()
+        return redirect('/my_files')
+
+    if request.method == 'GET':
+        # add form for updating an element
+        return render_template('edit.html', subs=build_subs('Edit ' + id))
+
+
+@app.route("/permission_denied")
+def permission_denied():
+    return render_template('permission_denied.html', subs=build_subs('Permission Denied'))
 
 
 @app.route("/logout")
+@login_required
 def logout():
     logout_user()
+    return render_template("index.html", subs=build_subs('Home'))
 
-    return redirect(url_for("index"))
+@app.route("/admin")
+@login_required
+def admin():
+    if current_user.is_admin:
+        return render_template('admin.html', subs=build_subs('Admin'))
+    else:
+        return render_template('permission_denied.html', subs=build_subs('Admin'))
 
 
 def validate_login(username, password):
     "Checks the database for the supplied login credentials"
-    db = create_engine('sqlite:///users2.db')
-    db.echo = True
+    # Used the already open db handles 
+    # TODO remove the old code
+     
+    # db = create_engine('sqlite:///users2.db')
+    # db.echo = True
 
-    metadata = MetaData(db)
+    # metadata = MetaData(db)
 
-    Session = sessionmaker(bind=db)
-    session = Session()
+    # Session = sessionmaker(bind=db)
+    # session = Session()
 
-    q = session.query(User).filter_by(ID=username)
+    q = User.query.filter(User.id == username)
 
     # If the select statement found no match for the username, count will return 0
     if q.count() <= 0:
         print("User not found. Please check your spelling and try again, or register a new user.\n")
         return False
 
-    key = q.first().PASSWORD
-    salt = q.first().SALT
+    key = q.first().password
+    salt = q.first().salt
 
     # Check if the supplied hashed password matches the stored hashed password
     if key != hash_password(password, salt)[0]:
@@ -303,78 +446,93 @@ def validate_login(username, password):
 
 def register_user(username, password, confirmPassword):
     # Check the database to see if the entered username is already taken
-    db = create_engine('sqlite:///users2.db')
-    db.echo = True
+    # Used the already open db handles 
+    # TODO remove the old code
 
-    metadata = MetaData(db)
+    # db = create_engine('sqlite:///users2.db')
+    # db.echo = True
 
-    Session = sessionmaker(bind=db)
-    session = Session()
+    # metadata = MetaData(db)
 
-    q = session.query(User).filter_by(ID=username)
+    # Session = sessionmaker(bind=db)
+    # session = Session()
+
+    q = User.query.filter(User.id == username)
 
     if not password_check(password):
         flash("Password not secure enough.")
-        return
+        return (False, "Password not secure")
 
     # If the select statement found an existing user, count will return 1
     if q.count() > 0:
         flash("User already exists. Please login or choose a different Username.\n")
-        return False
+        return (False, "User already exists")
 
     if password != confirmPassword:
         flash("Error: passwords didn't match. Please try registering again.")
-        return False
+        return (False, "Passwords didnt match")
 
     passAndSalt = hash_password(password)
 
-    insert_new_user(username, passAndSalt[0], passAndSalt[1])
+    if (insert_new_user(username, passAndSalt[0], passAndSalt[1])):
+        return (True, "Success")
+    else: 
+        return (False,"Adding to database failed")
 
-    return True
+
 
 def insert_new_user(username, password, salt):
-    db = create_engine('sqlite:///users2.db')
-    db.echo = True
+    # Used the already open db handles 
+    # TODO remove the old code
 
-    metadata = MetaData(db)
+    #  db.echo = True
 
-    user = User(ID=username, PASSWORD=password, SALT=salt)
+    # metadata = MetaData(db)
 
-    Session = sessionmaker(bind=db)
-    session = Session()
+    # user = User(id=username, password=password, salt=salt)
 
-    session.add(user)
-    session.commit()
+    # Session = sessionmaker(bind=db)
+    # session = Session()
 
-    return
+    # session.add(user)
+    # session.commit()
+
+    # return
+    if not User.query.filter(User.id == username).first():
+        user = User(
+            id = username,
+            password = password,
+            salt = salt,
+            is_admin = False,
+            is_staff = False,
+        )
+        db.session.add(user)
+        db.session.commit()
+        return True
+    else:
+        # User already exists 
+        return False 
 
 def get_user(username):
-    db = create_engine('sqlite:///users2.db')
-    db.echo = True
+    # Used the already open db handles 
+    # TODO remove the old code
+    # db.echo = True
 
-    metadata = MetaData(db)
+    # metadata = MetaData(db)
 
-    Session = sessionmaker(bind=db)
-    session = Session()
+    # Session = sessionmaker(bind=db)
+    # session = Session()
 
-    q = session.query(User).filter_by(ID=username)
+    # q = session.query(User).filter_by(id=username)
 
-    if q.count() < 1:
-        return None
+    # if q.count() < 1:
+    #     return None
 
-    return q[0]
+    # return q[0]
 
-#If no salt is given, returns a new random salt with the hashed password.
-#Otherwise, hashes the password with the supplied salt.
-def hash_password(password, salt=None):
-    if salt is None:
-        salt = os.urandom(16)
+    user = User.query.filter(User.id == username).first()
 
-    pass_bytes = salt + password.encode()
-
-    key = hashlib.sha256(pass_bytes).digest()
-
-    return key, salt
+    return user
 
 
 if __name__ == "__main__":
