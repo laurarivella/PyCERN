@@ -19,9 +19,16 @@
       Creation time: {{ file.created_date }}
     </div>
     <div class="mdl-card__actions mdl-card--border">
+      {% if not file.downloadable %}
       <a class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect" href="{{ file.url }}">
         Open 
       </a>
+      {% endif %}
+      {% if file.downloadable %}
+      <a class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect" href="{{ file.url }}" download>
+        Download 
+      </a>
+      {% endif %}
     </div>
 </div>
 

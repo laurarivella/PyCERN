@@ -99,6 +99,7 @@ class Files(db.Model):
     url = db.Column(db.String(200))
     created_date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     creator_id = db.Column(db.String(100, collation='NOCASE'), nullable=False)
+    downloadable = db.Column(db.Boolean(), nullable=False, server_default='0')
 
 #D efines the `users` table in the database for SQLAlchemy
 class User(UserMixin, db.Model):
@@ -307,7 +308,8 @@ def upload():
                 name=name,
                 url=url,
                 created_date=datetime.datetime.now(),
-                creator_id=current_user.id
+                creator_id=current_user.id,
+                downloadable = False
             )
             db.session.add(file_obj)
             db.session.commit()
@@ -327,7 +329,11 @@ def upload():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             file_obj = Files(
-                filename, url_for("download_file", files=filename)
+                name=filename, 
+                url=url_for("download_file", files=filename),
+                creator_id = current_user.id,
+                date_created = datetime.datetime.now(),
+                downloadable = True
             )
             db.session.add(file_obj)
             db.session.commit()
@@ -338,13 +344,12 @@ def upload():
 @login_required
 def search():
     if request.method == "POST":
-        form = request.form
-        search_value = form['search_string']
+        search_value = request.form.get('search-string')
         search = f"%{search_value}%"
         filenames = Files.query.filter(Files.name.like(search)).all()
-        return render_template("search.html", subs=build_subs('Search'), files=filenames)
+        return render_template("all_files.html", subs=build_subs('Search'), files=filenames)
     else:
-        return redirect('/')
+        return render_template("index.html", subs=build_subs('Search'))
         
 @app.route("/delete/<int:id>")
 @login_required
@@ -381,9 +386,9 @@ def edit(id):
         new_url = request.form.get('new_url')
         new_title = request.form.get('new_title')
       
-        if new_title != None: 
-            file.title = new_title
-        if new_url != None:
+        if new_title:
+            file.name = new_title
+        if new_url:
             file.url = new_url
 
         db.session.commit()
@@ -391,7 +396,7 @@ def edit(id):
 
     if request.method == 'GET':
         # add form for updating an element
-        return render_template('edit.html', subs=build_subs('Edit ' + id))
+        return render_template('edit.html', subs=build_subs('Edit ' + str(id)), file=file)
 
 
 @app.route("/permission_denied")
