@@ -317,29 +317,33 @@ def upload():
             db.session.commit()
             return redirect('/my_files')
 
-        # check if the post request has the file part
         if "file" not in request.files:
             flash("No file part", "error")
-            return redirect(request.url)
+            return render_template("upload.html", subs = build_subs('Upload'), error="File failed to send")
+
         file = request.files["file"]
         # if user does not select file, browser also
         # submit an empty part without filename
         if file.filename == "":
-            flash("No selected file", "error")
-            return redirect(request.url)
+            return render_template("upload.html", subs = build_subs('Upload'), error="No file selected")
+
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
             file_obj = Files(
-                name=filename, 
-                url=url_for("download_file", files=filename),
+                name = name,
+                url = url_for("download_file", filename=filename),
+                created_date = datetime.datetime.now(),
                 creator_id = current_user.id,
-                date_created = datetime.datetime.now(),
                 downloadable = True
             )
             db.session.add(file_obj)
             db.session.commit()
-            flash("Record was successfully added")
+
+            return render_template("upload.html", subs = build_subs('Upload'), error="File uploaded")
+        else:
+            return render_template("upload.html", subs = build_subs('Upload'), error="File invalid")
+
 
 
 @app.route("/search", methods=["GET", "POST"])
