@@ -386,7 +386,6 @@ def edit(id):
         if new_url != None:
             file.url = new_url
 
-        db.session.update(file)
         db.session.commit()
         return redirect('/my_files')
 
@@ -410,9 +409,47 @@ def logout():
 @login_required
 def admin():
     if current_user.is_admin:
-        return render_template('admin.html', subs=build_subs('Admin'))
+        admins = User.query.filter(User.is_admin == 1)
+        staff = User.query.filter(User.is_admin == 0, User.is_staff == 1)
+        users = User.query.filter(User.is_admin == 0, User.is_staff == 0)
+        files = Files.query.all()
+        return render_template('admin.html', subs=build_subs('Admin'), admins=admins, staff=staff, users=users, files=files)
     else:
         return render_template('permission_denied.html', subs=build_subs('Admin'))
+
+@app.route("/admin/<action>/<level>/<id>")
+@login_required
+def admin_functions(action, level, id):
+    if current_user.is_admin == 0:
+        return render_template('permission_denied.html', subs=build_subs('Admin'))
+    
+    user = User.query.filter(User.id == id).first()
+
+    if action=='promote':
+        if level=='admin':
+            user.is_admin = True
+            user.is_staff = True
+        elif level=='staff':
+            user.is_staff = True
+
+        db.session.commit()
+        return redirect('/admin')
+    
+    if action=='demote':
+        if level=='staff':
+            user.is_admin = False
+        if level=='user':
+            user.is_admin = False
+            user.is_staff = False 
+
+        db.session.commit()
+        return redirect('/admin')
+
+    if action=='delete':
+        db.session.delete(user)
+        db.session.commit()
+        return redirect('/admin')
+
 
 
 def validate_login(username, password):
