@@ -303,6 +303,8 @@ def upload():
     if request.method == 'POST':
         # process upload
         name = request.form.get('name')
+        if not name: 
+            return render_template("upload.html", subs = build_subs('Upload'), error="No file name entered. Cannot upload file.")
         url = request.form.get('url')
 
         if url:
