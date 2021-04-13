@@ -500,7 +500,6 @@ def validate_login(username, password):
 
     # If the select statement found no match for the username, count will return 0
     if q.count() <= 0:
-        print("User not found. Please check your spelling and try again, or register a new user.\n")
         return False
 
     key = q.first().password
