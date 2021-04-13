@@ -101,7 +101,7 @@ class Files(db.Model):
     creator_id = db.Column(db.String(100, collation='NOCASE'), nullable=False)
     downloadable = db.Column(db.Boolean(), nullable=False, server_default='0')
 
-#D efines the `users` table in the database for SQLAlchemy
+#Defines the `users` table in the database for SQLAlchemy
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
@@ -113,7 +113,7 @@ class User(UserMixin, db.Model):
     active = db.Column('is_active', db.Boolean(), nullable=False, server_default='1')
 
     # rewrote user class to be a different format to use the UserMixin
-    # TODO remove this comment - just here to show change incase i break everything
+    # TODO remove this comment - just here to show change incase I break everything
     # ID = Column(String, primary_key=True)
     # PASSWORD = Column(BINARY)
     # SALT = Column(BINARY)
@@ -214,6 +214,10 @@ def password_check(password):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(user_id)
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    return redirect('/permission_denied')
 
 @app.route("/downloads/<filename>")
 def download_file(filename):
@@ -403,7 +407,7 @@ def delete_multiple():
             db.session.delete(a)
 
         db.session.commit()
-    return redirect('/my_files')
+    return redirect(request.referrer)
 
 
 @app.route("/edit/<int:id>", methods=["POST", "GET"])
