@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block body %}
+<form action="/login" method="post" style="width:90%; padding-bottom: 10px;">
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label" style="width:70%">
+      <input class="mdl-textfield__input" type="text" name="username" id="username">
+      <label class="mdl-textfield__label" for="username">Username</label>
+    </div>
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <input class="mdl-textfield__input" type="password" name="password" id="password">
+        <label class="mdl-textfield__label" for="password">Password...</label>
+    </div>
+    <!-- Accent-colored raised button -->
+    <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:70%">
+    Login
+   </button>
+</form>
+<hr>
+
+<a href="/register" style="width:90%; padding-top: 5px">
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:70%">
+  Register
+ </button>
+ </a>
+{% endblock %}

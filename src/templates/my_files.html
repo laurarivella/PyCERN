@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block body %}
+{% if not files  %}
+<div class="alert alert-warning" role="alert">
+  No files found
+</div>
+{% endif %}
+{% if files %}
+<form action="/delete" method="POST" style="width:100%">
+<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent" type="submit" style="width:100%">
+  Delete Selected
+</button>
+{% for file in files %}
+
+<div class="mdl-cell mdl-cell--12-col mdl-card mdl-shadow--2dp">
+    <div class="mdl-card__title">
+      <h2 class="mdl-card__title-text">{{ file.name}}</h2>
+    </div>
+    <div class="mdl-card__supporting-text">
+      Creator: {{ file.creator_id }}
+      <hr>
+      Uploaded: {{ file.created_date}}
+    </div>
+    <div class="mdl-card__actions mdl-card--border">
+      <a class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect" href="/edit/{{file.id}}">
+        Edit 
+      </a>
+      <a class="mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect" href="/delete/{{file.id}}">
+        Delete 
+      </a>
+    </div>
+    <div class="mdl-card__menu">
+      <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="delete_{{file.id}}">
+        <input type="checkbox" name="delete_{{file.id}}" id="delete_{{file.id}}" class="mdl-checkbox__input" value=True>
+      </label>
+    </div>
+</div>
+{% endfor %}
+</form>
+{% endif %}
+{% endblock %}
