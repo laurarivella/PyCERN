@@ -71,8 +71,11 @@ class ConfigClass(object):
     SQLALCHEMY_DATABASE_URI = "sqlite:///main_db.sqlite3"
 
     # Settings for improving cookie security
+    # SECURE limits cookies to HTTPS traffic only
     SESSION_COOKIE_SECURE=True
+    # HTTPONLY protects the contents of cookies from being read with JavaScript
     SESSION_COOKIE_HTTPONLY=True
+    # SAMESITE restricts how cookies are sent with requests from external sites
     SESSION_COOKIE_SAMESITE='Lax'
 
 
@@ -103,7 +106,7 @@ class Files(db.Model):
     creator_id = db.Column(db.String(100, collation='NOCASE'), nullable=False)
     downloadable = db.Column(db.Boolean(), nullable=False, server_default='0')
 
-#Defines the `users` table in the database for SQLAlchemy
+# Defines the `users` table in the database for SQLAlchemy
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
@@ -114,18 +117,6 @@ class User(UserMixin, db.Model):
     is_staff = db.Column(db.Boolean(), nullable=False, server_default='0')
     active = db.Column('is_active', db.Boolean(), nullable=False, server_default='1')
 
-
-#Defines the uploads table in the database for SQLAlchemy
-class UploadedFile(db.Model):
-    __tablename__ = 'uploads'
-
-    file_id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String(255))
-    url = db.Column(db.String(255))
-    created_date = db.Column(db.DateTime())
-    edited_date = db.Column(db.DateTime())
-    creator_id = db.Column(db.String(255))
-    editor_id = db.Column(db.String(255))
 
 # Creates database if it doesn't already exist
 db.create_all()
