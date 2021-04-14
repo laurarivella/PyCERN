@@ -468,6 +468,10 @@ def admin_functions(action, level, id):
     #Admin can demote users to lower roles
     if action=='demote':
         if level=='staff':
+            # Dont demote the last admin
+            if user.is_admin:
+                if len(User.query.filter(User.is_admin == True).all()) <= 1:
+                    return render_template("error.html", subs=build_subs("Error"), header="Action Failed", message="Unable to delete last remaining admin.")
             user.is_admin = False
         if level=='user':
             user.is_admin = False
@@ -477,6 +481,11 @@ def admin_functions(action, level, id):
         return redirect('/admin')
     # Admin can delete users
     if action=='delete':
+        #  Dont delete the last admin
+        if user.is_admin:
+            if len(User.query.filter(User.is_admin == True).all()) <= 1:
+                return render_template("error.html", subs=build_subs("Error"), header="Action Failed", message="Unable to delete last remaining admin.")
+
         db.session.delete(user)
         db.session.commit()
         return redirect('/admin')
