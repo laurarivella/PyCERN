@@ -27,8 +27,8 @@
                 {% for a in admins %}
                 <tr>
                     <td>{{a.id}}</td>
-                    <td><a href="/admin/demote/staff/{{a.id}}"><button class="btn btn-warning">Demote</button></a></td>
-                    <td><a href="/admin/delete/user/{{a.id}}"><button class="btn btn-danger">Delete</button></a></td>
+                    <td><a href="/admin/demote/staff/{{a.id}}" onclick="if (!confirm('Are you sure you want to demote {{a.id}}?')) return false;"><button class="btn btn-warning">Demote</button></a></td>
+                    <td><a href="/admin/delete/user/{{a.id}}" onclick="if (!confirm('Are you sure you want to delete {{a.id}}?')) return false;"><button class="btn btn-danger">Delete</button></a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -57,9 +57,9 @@
                 {% for a in staff %}
                 <tr>
                     <td>{{a.id}}</td>
-                    <td><a href="/admin/promote/admin/{{a.id}}"><button class="btn btn-success">Promote</button></a></td>
-                    <td><a href="/admin/demote/user/{{a.id}}"><button class="btn btn-warning">Demote</button></a></td>
-                    <td><a href="/admin/delete/user/{{a.id}}"><button class="btn btn-danger">Delete</button></a></td>
+                    <td><a href="/admin/promote/admin/{{a.id}}" onclick="if (!confirm('Are you sure you want to promote {{a.id}}?')) return false;"><button class="btn btn-success">Promote</button></a></td>
+                    <td><a href="/admin/demote/user/{{a.id}}"onclick="if (!confirm('Are you sure you want to demote {{a.id}}?')) return false;"><button class="btn btn-warning">Demote</button></a></td>
+                    <td><a href="/admin/delete/user/{{a.id}}" onclick="if (!confirm('Are you sure you want to delete {{a.id}}?')) return false;"><button class="btn btn-danger">Delete</button></a></td>
                 </tr>
                 {% endfor %}
             </tbody>
