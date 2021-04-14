@@ -211,11 +211,12 @@ def login():
         if success:
             # login session with flask_login
             login_user(get_user(username))
-        return render_template("index.html", subs=build_subs('Home'))
+            return redirect("/")
+        return render_template("login.html", subs=build_subs('Home'), error="Login failed. Please try again.")
 
     # Display HTML login form
     elif request.method == 'GET':
-        return render_template('login.html', subs=build_subs('Login'))
+        return render_template('login.html', subs=build_subs('Login'), error="")
 
 # Allows user to view all files
 @app.route("/files")
@@ -520,7 +521,7 @@ def register_user(username, password, confirmPassword):
 
     # If the select statement found an existing user, count will return 1
     if q.count() > 0:
-        return (False, "User already exists")
+        return (False, "User already exists. Please log in.")
 
     if password != confirmPassword:
         return (False, "Passwords didnt match")

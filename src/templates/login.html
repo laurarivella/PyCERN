@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 
 {% block body %}
+
+{% if error != "" %}
+<div class="alert alert-warning" role="alert" style="width:90%">
+    {{ error }}
+</div>
+{% endif %}
+
 <form action="/login" method="post" style="width:90%; padding-bottom: 10px;">
     <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label" style="width:70%">
       <input class="mdl-textfield__input" type="text" name="username" id="username">
