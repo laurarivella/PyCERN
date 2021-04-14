@@ -210,8 +210,8 @@ def login():
         
         if success:
             # login session with flask_login
-            login_user(get_user(username))
-            return redirect("/")
+            login_user(get_user(username), remember=True)
+            return render_template("index.html", subs=build_subs("Login Successful"))
         return render_template("login.html", subs=build_subs('Home'), error="Login failed. Please try again.")
 
     # Display HTML login form
@@ -559,4 +559,4 @@ def get_user(username):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
