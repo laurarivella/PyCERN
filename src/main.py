@@ -1,30 +1,35 @@
-import os, hashlib, re, datetime
+# pylint: disable=no-member
+# pylint: disable=missing-docstring
+# pylint: disable=line-too-long
+import os
+import hashlib
+import re
+import datetime
+
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
 from flask import (
     Flask,
-    flash,
     redirect,
     render_template,
     request,
     send_from_directory,
-    session,
     url_for
 )
 
 from flask_login import (
-    LoginManager, 
-    login_user, 
-    login_required, 
-    logout_user, 
-    current_user, 
+    LoginManager,
+    login_user,
+    login_required,
+    logout_user,
+    current_user,
     UserMixin
 )
 
 
-#If no salt is given, returns a new random salt with the hashed password.
-#Otherwise, hashes the password with the supplied salt.
+# If no salt is given, returns a new random salt with the hashed password.
+# Otherwise, hashes the password with the supplied salt.
 def hash_password(password, salt=None):
     if salt is None:
         salt = os.urandom(16)
@@ -34,6 +39,7 @@ def hash_password(password, salt=None):
     key = hashlib.sha256(pass_bytes).digest()
 
     return key, salt
+
 
 # Build a substitution dictionary to pass to the template
 def build_subs(page=None):
@@ -60,6 +66,7 @@ def build_subs(page=None):
     }
     return subs
 
+
 # Enable class based application config
 class ConfigClass(object):
     # Flask app config
@@ -82,18 +89,17 @@ class ConfigClass(object):
 # Initialize the Flask application
 app = Flask(__name__)
 
-# Use a config class to improve readability 
+# Use a config class to improve readability
 app.config.from_object(__name__+'.ConfigClass')
 
 # Upload folder permission need to be check and full read write
 ALLOWED_EXTENSIONS = {"txt", "doc", "docx", "xls", "xlsx", "pdf", "png", "jpg", "jpeg", "gif","csv"}
 
-
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-
 db = SQLAlchemy(app)
+
 
 # Defines the `files` table in the database for SQLAlchemy
 class Files(db.Model):
@@ -106,11 +112,13 @@ class Files(db.Model):
     creator_id = db.Column(db.String(100, collation='NOCASE'), nullable=False)
     downloadable = db.Column(db.Boolean(), nullable=False, server_default='0')
 
+
 # Defines the `users` table in the database for SQLAlchemy
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
-    id = db.Column(db.String(100, collation='NOCASE'), nullable=False, unique=True, primary_key=True)
+    id = db.Column(db.String(100, collation='NOCASE'),
+                   nullable=False, unique=True, primary_key=True)
     password = db.Column(db.LargeBinary(), nullable=False, server_default='')
     salt = db.Column(db.LargeBinary(), nullable=False, server_default='')
     is_admin = db.Column(db.Boolean(), nullable=False, server_default='0')
@@ -120,10 +128,10 @@ class User(UserMixin, db.Model):
 
 # Creates database if it doesn't already exist
 db.create_all()
-
-# Hardcode an admin user into the database username: 'admin' password: 'Admin123' - This will be removed once the first admin is made 
+# Hardcode an admin user into the database
+# username: 'admin' password: 'Admin123' - This will be removed once the first admin is made
 # I might do a bit more with this for eg. If all admins are deleted by mistake - Amy
-p,s = hash_password('Admin123')
+p, s = hash_password('Admin123')
 if not User.query.filter(User.id == 'admin').first():
     user = User(
         id='admin',
@@ -135,18 +143,24 @@ if not User.query.filter(User.id == 'admin').first():
     db.session.add(user)
     db.session.commit()
 
+
 def allowed_file(filename):
+    """Checks if filetype is allowed"""
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Password complexity minimum requirements: 8 characters long, 1 number, 1 symbol , 1 lower case letter, 1 upper case letter
+
+# Password complexity minimum requirements:
+# 8 characters long, 1 number, 1 symbol , 1 lower case letter, 1 upper case letter
 def password_check(password):
+    """Checks if password meets requirements"""
 
     length_error = len(password) < 8
     digit_error = re.search(r"\d", password) is None
     uppercase_error = re.search(r"[A-Z]", password) is None
     lowercase_error = re.search(r"[a-z]", password) is None
-    symbol_error = re.search(r"\W", password) is None
-    password_ok = not ( length_error or digit_error or uppercase_error or lowercase_error or symbol_error )
+    symbol_error = re.search(r"[\W]", password) is None
+    password_ok = not ( length_error or digit_error or uppercase_error
+                        or lowercase_error or symbol_error )
 
     return {
         'password_ok' : password_ok,
@@ -167,15 +181,18 @@ def load_user(user_id):
 def unauthorized():
     return redirect('/permission_denied')
 
+
 # Home page
 @app.route('/')
 def index():
     return render_template('index.html', subs=build_subs('Home'))
 
+
 # Register new user page
 @app.route('/register/')
 def register_user():
     return render_template('register.html', subs=build_subs('Register'), error = "")
+
 
 # Handle POST request for new user form
 @app.route('/register/', methods=['POST'])
@@ -183,11 +200,55 @@ def register_user_post():
     username = request.form.get('username')
     password = request.form.get('password')
     confirm_password = request.form.get('confirmpassword')
+    errors = password_check(password)
 
-    #Checks password meets complexity requirements
-    if not password_check(password).get("password_ok"):
+    print(username)
+
+    # Check for missing username
+    if not username:
+        return render_template("register.html",
+                               subs=build_subs('Regsistration failed'),
+                               error="Please enter a username")
+
+    # Check for missing password
+    if not password:
+        return render_template("register.html",
+                               subs=build_subs('Registration failed'),
+                               error="Please enter a password. Password must be Min. 8 characters and contain at "
+                                     "least 1 number, 1 uppercase, 1 lowercase, and a special character.")
+
+    # Check for mismatched confirmation password
+    elif password != confirm_password:
+        return render_template("register.html",
+                               subs=build_subs('Registration failed'),
+                               error="Passwords did not match. Password must be Min. 8 characters and contain at "
+                                     "least 1 number, 1 uppercase, 1 lowercase, and a special character.")
+
+    # Checks password meets complexity requirements
+    elif not errors.get("password_ok"):
+        error_string = "<br>"
+
+        if errors.get("length_error"):
+            error_string += "Password was under 8 characters long <br>"
+
+        if errors.get("digit_error"):
+            error_string += "Password did not contain a digit <br>"
+
+        if errors.get("uppercase_error"):
+            error_string += "Password did not contain an uppercase letter <br>"
+
+        if errors.get("lowercase_error"):
+            error_string += "Password did not contain a lowercase letter <br>"
+
+        if errors.get("symbol_error"):
+            error_string += "Password did not contain a special character <br>"
+
         # Returns error if it does not
-        return render_template("register.html", subs=build_subs('Regsistration failed'), error="Password must be Min. 8 characters and contain at least 1 number, 1 uppercase, 1 lowercase, and a special character.")
+        return render_template("register.html",
+                               subs=build_subs('Registration failed'),
+                               error="Password must be Min. 8 characters and "
+                                     "contain at least 1 number, 1 uppercase, "
+                                     "1 lowercase, and a special character." + error_string)
 
     # Pass the error back if there is one
     success, error = register_user(username, password, confirm_password)
@@ -197,6 +258,7 @@ def register_user_post():
 
     return render_template("register.html", subs=build_subs('Regsistration'), error=error)
 
+
 # User login page and login form
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -204,10 +266,10 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         # Validate login credentials provided
         success = validate_login(username, password)
-        
+
         if success:
             # login session with flask_login
             login_user(get_user(username), remember=True)
@@ -218,6 +280,7 @@ def login():
     elif request.method == 'GET':
         return render_template('login.html', subs=build_subs('Login'), error="")
 
+
 # Allows user to view all files
 @app.route("/files")
 # Requires a user to be logged in, if user is not logged in redirects to permission denied page
@@ -225,6 +288,7 @@ def login():
 def files():
     filenames = Files.query.all()
     return render_template("all_files.html", subs = build_subs('Files'), files=filenames)
+
 
 # Allows user to view only files they have uploaded
 @app.route("/my_files")
@@ -234,10 +298,11 @@ def my_files():
     # Checks user has either 'staff' or 'admin' role, redirects to permission denied page if they do not.
     if not (current_user.is_staff or current_user.is_admin):
         return render_template('permission_denied.html', subs=build_subs('My Files'))
-    
+
     # Get a list of all files where creator id and current logged in user match
     filenames = Files.query.filter(Files.creator_id == current_user.id)
     return render_template("my_files.html", subs = build_subs('Files'), files=filenames)
+
 
 # Allows user to upload files or add a link to an external file, adds file info to the database.
 @app.route("/upload", methods=["GET", "POST"])
@@ -257,9 +322,10 @@ def upload():
         name = request.form.get('name')
 
         # Check if user has input a file name when attempting to upload a file
-        if not name: 
+        if not name:
             # Returns error message if no file name provided
-            return render_template("upload.html", subs = build_subs('Upload'), error="No file name entered. Cannot upload file.")
+            return render_template("upload.html", subs = build_subs('Upload'),
+                                   error="No file name entered. Cannot upload file.")
         url = request.form.get('url')
 
         # If url field exists, user is submitting name + url form
@@ -301,10 +367,12 @@ def upload():
         else:
             return render_template("upload.html", subs = build_subs('Upload'), error="File invalid")
 
+
 # Expose uploaded files for downloading
 @app.route("/downloads/<filename>")
 def download_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
 
 # Search files in the database
 @app.route("/search", methods=["GET", "POST"])
@@ -316,10 +384,11 @@ def search():
         search = f"%{search_value}%"
         filenames = Files.query.filter(Files.name.like(search)).all()
         return render_template("all_files.html", subs=build_subs('Search'), files=filenames)
-    else:
-        return render_template("index.html", subs=build_subs('Search'))
 
-# Allows user to delete a single file (id provided in route)       
+    return render_template("index.html", subs=build_subs('Search'))
+
+
+# Allows user to delete a single file (id provided in route)
 @app.route("/delete/<int:id>")
 # Requires a user to be logged in, if user is not logged in redirects to permission denied page
 @login_required
@@ -332,20 +401,21 @@ def delete(id):
 
     # Checks if user trying to delete the files is either the creator or an admin
     if (file.creator_id != current_user.id) and not current_user.is_admin:
-        return redirect('/permission_denied')        
+        return redirect('/permission_denied')
 
     try:
         db.session.delete(file)
         db.session.commit()
-        return redirect('/my_files')
+        return redirect(request.referrer)
     except:
         return "Error deleting file"
+
 
 # Allows users to delete multiple files at once
 @app.route('/delete', methods=['POST'])
 # Requires a user to be logged in, if user is not logged in redirects to permission denied page
 @login_required
-def delete_multiple(): 
+def delete_multiple():
     # Checks user has either 'staff' or 'admin' role, redirects to permission denied page if they do not.
     if not (current_user.is_staff or current_user.is_admin):
         redirect('/permission_denied')
@@ -361,16 +431,16 @@ def delete_multiple():
                 id = key.split('_')[1]
                 # Append id to list of ids to delete
                 ids.append(id)
-        
+
         # Delete all files containing the id's in the list
         files_to_delete = Files.query.filter(Files.id.in_(ids))
 
-        # If user has 'staff' role, checks they are only trying to delete their own files 
+        # If user has 'staff' role, checks they are only trying to delete their own files
         # (this is an extra check, they should not have the option to delete any files that aren't their own)
         # Doesn't run check if user is admin to improve efficiency as admin can delete all files anyway
         if not current_user.is_admin:
             for a in files_to_delete:
-                # Compares the creator of the file with the current logged in user 
+                # Compares the creator of the file with the current logged in user
                 if a.creator_id != current_user.id:
                     return redirect('/permission_denied')
         # Deletes selected files
@@ -379,6 +449,7 @@ def delete_multiple():
 
         db.session.commit()
     return redirect(request.referrer)
+
 
 # Users can edit the links/paths to their own files
 @app.route("/edit/<int:id>", methods=["POST", "GET"])
@@ -394,7 +465,7 @@ def edit(id):
     # Compares creator of the file with current logged in user, or if they are admin
     if (file.creator_id != current_user.id) and not current_user.is_admin:
         # Redirects to permission denied page if current user is neither an admin or creator of the file
-        return redirect('/permission_denied')  
+        return redirect('/permission_denied')
 
     if request.method == 'POST':
         # User inputs new file name or link
@@ -414,10 +485,12 @@ def edit(id):
         # add form for updating an element
         return render_template('edit.html', subs=build_subs(f"Edit {file.name} #{str(id)}"), file=file)
 
+
 # Permission denied page
 @app.route("/permission_denied")
 def permission_denied():
     return render_template('permission_denied.html', subs=build_subs('Permission Denied'))
+
 
 # Logout user page
 @app.route("/logout")
@@ -427,14 +500,15 @@ def logout():
     logout_user()
     return render_template("index.html", subs=build_subs('Home'))
 
+
 # Admin panel for user management and file management
 @app.route("/admin")
 # Requires a user to be logged in, if user is not logged in redirects to permission denied page
 @login_required
 def admin():
-    # Checks current logged in user has 'Admin' role 
+    # Checks current logged in user has 'Admin' role
     if current_user.is_admin:
-    # Pulls users from database to display them in the template
+        # Pulls users from database to display them in the template
         admins = User.query.filter(User.is_admin == 1)
         staff = User.query.filter(User.is_admin == 0, User.is_staff == 1)
         users = User.query.filter(User.is_admin == 0, User.is_staff == 0)
@@ -442,6 +516,7 @@ def admin():
     else:
         # Redirects to permission denied page if user is not admin.
         return render_template('permission_denied.html', subs=build_subs('Admin'))
+
 
 # Admin panel user management
 @app.route("/admin/<action>/<level>/<id>")
@@ -451,51 +526,55 @@ def admin_functions(action, level, id):
     # Checks current logged in user has 'Admin' role and redirects to permission denied page if user is not admin.
     if current_user.is_admin == 0:
         return render_template('permission_denied.html', subs=build_subs('Admin'))
-    
+
     user = User.query.filter(User.id == id).first()
 
     # Admin can promote users to higher roles
-    if action=='promote':
-        if level=='admin':
+    if action == 'promote':
+        if level == 'admin':
             user.is_admin = True
             user.is_staff = True
-        elif level=='staff':
+        elif level == 'staff':
             user.is_staff = True
 
         db.session.commit()
         return redirect('/admin')
-    
-    #Admin can demote users to lower roles
-    if action=='demote':
-        if level=='staff':
-            # Dont demote the last admin
+
+    # Admin can demote users to lower roles
+    if action == 'demote':
+        if level == 'staff':
+            # Don't demote the last admin
             if user.is_admin:
                 if len(User.query.filter(User.is_admin == True).all()) <= 1:
-                    return render_template("error.html", subs=build_subs("Error"), header="Action Failed", message="Unable to delete last remaining admin.")
+                    return render_template("error.html", subs=build_subs("Error"), 
+                                    header="Action Failed", message="Unable to delete last remaining admin.")
             user.is_admin = False
-        if level=='user':
+        if level == 'user':
             user.is_admin = False
-            user.is_staff = False 
+            user.is_staff = False
 
         db.session.commit()
         return redirect('/admin')
     # Admin can delete users
-    if action=='delete':
-        #  Dont delete the last admin
+    if action == 'delete':
+        #  Don't delete the last admin
         if user.is_admin:
-            if len(User.query.filter(User.is_admin == True).all()) <= 1:
-                return render_template("error.html", subs=build_subs("Error"), header="Action Failed", message="Unable to delete last remaining admin.")
+            if len(User.query.filter(User.is_admin).all()) <= 1:
+                return render_template("error.html", subs=build_subs("Error"),
+                                       header="Action Failed", message="Unable to delete last remaining admin.")
 
         db.session.delete(user)
         db.session.commit()
         return redirect('/admin')
+
 
 # Admin panel file management page
 @app.route("/manage_files")
 # Requires a user to be logged in, if user is not logged in redirects to permission denied page
 @login_required
 def manage_files():
-    # Checks current logged in user has 'Admin' role and redirects to permission denied page if user is not admin.
+    # Checks current logged in user has 'Admin' role and
+    # redirects to permission denied page if user is not admin.
     if not current_user.is_admin:
         redirect("/permission_denied")
     # Shows all files on admin file management page
@@ -503,9 +582,8 @@ def manage_files():
     return render_template("my_files.html", subs=build_subs("Manage All Files"), files=files)
 
 
-
 def validate_login(username, password):
-    #Checks the database for the supplied login credentials
+    # Checks the database for the supplied login credentials
     q = User.query.filter(User.id == username)
 
     # If the select statement found no match for the username, count will return 0
@@ -521,27 +599,27 @@ def validate_login(username, password):
 
     return True
 
-def register_user(username, password, confirmPassword):
+
+def register_user(username, password, confirm_password):
 
     q = User.query.filter(User.id == username)
 
     if not password_check(password):
-        return (False, "Password not secure")
+        return False, "Password not secure"
 
     # If the select statement found an existing user, count will return 1
     if q.count() > 0:
-        return (False, "User already exists. Please log in.")
+        return False, "User already exists. Please log in."
 
-    if password != confirmPassword:
-        return (False, "Passwords didnt match")
+    if password != confirm_password:
+        return False, "Passwords didn't match"
 
-    passAndSalt = hash_password(password)
+    pass_and_salt = hash_password(password)
 
-    if (insert_new_user(username, passAndSalt[0], passAndSalt[1])):
-        return (True, "Success")
-    else: 
-        return (False,"Adding to database failed")
-
+    if insert_new_user(username, pass_and_salt[0], pass_and_salt[1]):
+        return True, "Success"
+    else:
+        return False, "Adding to database failed"
 
 
 def insert_new_user(username, password, salt):
@@ -558,8 +636,9 @@ def insert_new_user(username, password, salt):
         db.session.commit()
         return True
     else:
-        # User already exists 
-        return False 
+        # User already exists
+        return False
+
 
 def get_user(username):
     user = User.query.filter(User.id == username).first()
