@@ -6,6 +6,10 @@ import hashlib
 import re
 import datetime
 
+from random import randint
+
+from flask_mail import Mail, Message
+
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
@@ -15,6 +19,7 @@ from flask import (
     render_template,
     request,
     send_from_directory,
+    session,
     url_for
 )
 
@@ -85,6 +90,14 @@ class ConfigClass(object):
     # SAMESITE restricts how cookies are sent with requests from external sites
     SESSION_COOKIE_SAMESITE='Lax'
 
+    # Mail server settings 
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 465
+    MAIL_USERNAME = 'developer1ali@gmail.com'
+    MAIL_PASSWORD = "1N$pector75"
+    MAIL_USE_TLS = False
+    MAIL_USE_SSL = True
+
 
 # Initialize the Flask application
 app = Flask(__name__)
@@ -98,8 +111,10 @@ ALLOWED_EXTENSIONS = {"txt", "doc", "docx", "xls", "xlsx", "pdf", "png", "jpg", 
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-db = SQLAlchemy(app)
+mail = Mail(app)
+otp = randint(000000, 999999)
 
+db = SQLAlchemy(app)
 
 # Defines the `files` table in the database for SQLAlchemy
 class Files(db.Model):
@@ -132,9 +147,9 @@ db.create_all()
 # username: 'admin' password: 'Admin123' - This will be removed once the first admin is made
 # I might do a bit more with this for eg. If all admins are deleted by mistake - Amy
 p, s = hash_password('Admin123')
-if not User.query.filter(User.id == 'admin').first():
+if not User.query.filter(User.id == 'admin_email@example.com').first():
     user = User(
-        id='admin',
+        id='admin_email@example.com',
         password=p,
         salt=s,
         is_admin = True,
@@ -271,15 +286,35 @@ def login():
         success = validate_login(username, password)
 
         if success:
-            # login session with flask_login
-            login_user(get_user(username), remember=True)
-            return render_template("index.html", subs=build_subs("Login Successful"))
+            msg = Message(subject='OTP Verification', sender='developer1ali@gmail.com', recipients=[username])
+            msg.body = 'Your OTP Code is: '+str(otp)+'.'
+            mail.send(msg)
+            session['username'] = username
+            session['password'] = password
+            return render_template("OTP.html",subs=build_subs('Login'))
         return render_template("login.html", subs=build_subs('Home'), error="Login failed. Please try again.")
 
     # Display HTML login form
     elif request.method == 'GET':
         return render_template('login.html', subs=build_subs('Login'), error="")
 
+@app.route('/OTP', methods=['POST', 'GET'])
+def OTP():
+    if request.method == 'POST':
+        global otp
+        user_otp = request.form.get('OTP')
+        username = session.get('username', None)
+        password = session.get('password', None)
+        success = validate_login(username, password)
+        if success and otp == int(user_otp):
+            login_user(get_user(username), remember=True)
+            otp = randint(000000, 999999)
+            return render_template("index.html", subs=build_subs('Home'))
+        else:
+            return render_template("OTP.html", subs=build_subs('OTP'), error="Incorrect OTP Code entered")
+
+    elif request.method == 'GET':
+        return render_template('OTP.html', subs=build_subs('Login'))
 
 # Allows user to view all files
 @app.route("/files")
@@ -320,13 +355,13 @@ def upload():
     if request.method == 'POST':
         # process upload
         name = request.form.get('name')
+        url = request.form.get('url')
 
-        # Check if user has input a file name when attempting to upload a file
-        if not name:
+                # Check if user has input a file name when attempting to upload a file
+        if url and not name:
             # Returns error message if no file name provided
             return render_template("upload.html", subs = build_subs('Upload'),
                                    error="No file name entered. Cannot upload file.")
-        url = request.form.get('url')
 
         # If url field exists, user is submitting name + url form
         if url:
@@ -353,12 +388,13 @@ def upload():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
             file_obj = Files(
-                name = name,
-                url = url_for("download_file", filename=filename),
-                created_date = datetime.datetime.now(),
-                creator_id = current_user.id,
-                downloadable = True
+                name=file.filename,
+                url=url_for("download_file", filename=filename),#
+                created_date=datetime.datetime.now(),
+                creator_id=current_user.id,
+                downloadable=True
             )
             db.session.add(file_obj)
             db.session.commit()
