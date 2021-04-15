@@ -406,7 +406,7 @@ def delete(id):
     try:
         db.session.delete(file)
         db.session.commit()
-        return redirect('/my_files')
+        return redirect(request.referrer)
     except:
         return "Error deleting file"
 
@@ -545,8 +545,9 @@ def admin_functions(action, level, id):
         if level == 'staff':
             # Don't demote the last admin
             if user.is_admin:
-                if len(User.query.filter(User.is_admin is True).all()) <= 1:
-                    return render_template("error.html", subs=build_subs("Error"), header="Action Failed", message="Unable to delete last remaining admin.")
+                if len(User.query.filter(User.is_admin == True).all()) <= 1:
+                    return render_template("error.html", subs=build_subs("Error"), 
+                                    header="Action Failed", message="Unable to delete last remaining admin.")
             user.is_admin = False
         if level == 'user':
             user.is_admin = False
