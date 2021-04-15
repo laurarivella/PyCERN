@@ -14,11 +14,11 @@ from flask import (
 )
 
 from flask_login import (
-    LoginManager, 
-    login_user, 
-    login_required, 
-    logout_user, 
-    current_user, 
+    LoginManager,
+    login_user,
+    login_required,
+    logout_user,
+    current_user,
     UserMixin
 )
 
@@ -82,7 +82,7 @@ class ConfigClass(object):
 # Initialize the Flask application
 app = Flask(__name__)
 
-# Use a config class to improve readability 
+# Use a config class to improve readability
 app.config.from_object(__name__+'.ConfigClass')
 
 # Upload folder permission need to be check and full read write
@@ -145,7 +145,7 @@ def password_check(password):
     digit_error = re.search(r"\d", password) is None
     uppercase_error = re.search(r"[A-Z]", password) is None
     lowercase_error = re.search(r"[a-z]", password) is None
-    symbol_error = re.search(r"\W", password) is None
+    symbol_error = re.search(r"[\W]", password) is None
     password_ok = not ( length_error or digit_error or uppercase_error or lowercase_error or symbol_error )
 
     return {
@@ -183,11 +183,54 @@ def register_user_post():
     username = request.form.get('username')
     password = request.form.get('password')
     confirm_password = request.form.get('confirmpassword')
+    errors = password_check(password)
+
+    print(username)
+
+    #Check for missing username
+    if not username:
+        return render_template("register.html",
+                               subs=build_subs('Regsistration failed'),
+                               error="Please enter a username")
+
+    #Check for missing password
+    elif not password:
+        return render_template("register.html",
+                               subs=build_subs('Regsistration failed'),
+                               error="Please enter a password. Password must be Min. 8 characters and contain at "
+                                     "least 1 number, 1 uppercase, 1 lowercase, and a special character.")
+
+    #Check for mismatched confirmation password
+    elif password != confirm_password:
+        return render_template("register.html",
+                                   subs=build_subs('Regsistration failed'),
+                                   error="Passwords did not match. Password must be Min. 8 characters and contain at "
+                                     "least 1 number, 1 uppercase, 1 lowercase, and a special character.")
 
     #Checks password meets complexity requirements
-    if not password_check(password).get("password_ok"):
+    elif not errors.get("password_ok"):
+        error_string = "<br>";
+
+        if errors.get("length_error"):
+            error_string += "Password was under 8 characters long <br>"
+
+        if errors.get("digit_error"):
+            error_string += "Password did not contain a digit <br>"
+
+        if errors.get("uppercase_error"):
+            error_string += "Password did not contain an uppercase letter <br>"
+
+        if errors.get("lowercase_error"):
+            error_string += "Password did not contain a lowercase letter <br>"
+
+        if errors.get("symbol_error"):
+            error_string += "Password did not contain a special character <br>"
+
         # Returns error if it does not
-        return render_template("register.html", subs=build_subs('Regsistration failed'), error="Password must be Min. 8 characters and contain at least 1 number, 1 uppercase, 1 lowercase, and a special character.")
+        return render_template("register.html",
+                               subs=build_subs('Regsistration failed'),
+                               error="Password must be Min. 8 characters and contain at least 1 number, 1 uppercase, "
+                                     "1 lowercase, and a special character." + error_string)
 
     # Pass the error back if there is one
     success, error = register_user(username, password, confirm_password)
@@ -332,7 +375,7 @@ def delete(id):
 
     # Checks if user trying to delete the files is either the creator or an admin
     if (file.creator_id != current_user.id) and not current_user.is_admin:
-        return redirect('/permission_denied')        
+        return redirect('/permission_denied')
 
     try:
         db.session.delete(file)
