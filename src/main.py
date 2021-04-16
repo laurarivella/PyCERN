@@ -1,6 +1,7 @@
 # pylint: disable=no-member
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+# pylint: disable=invalid-name
 import os
 import hashlib
 import re
@@ -90,11 +91,12 @@ class ConfigClass(object):
     # SAMESITE restricts how cookies are sent with requests from external sites
     SESSION_COOKIE_SAMESITE='Lax'
 
-    # Mail server settings 
+    # Mail server settings
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 465
-    MAIL_USERNAME = 'developer1ali@gmail.com'
-    MAIL_PASSWORD = "1N$pector75"
+    MAIL_USERNAME = 'rsdebicccd@gmail.com'
+    MAIL_PASSWORD = "b^pcb@*r56@2*bq6"
+    MAIL_DEFAULT_SENDER = 'rsdebicccd@gmail.com'
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True
 
@@ -112,7 +114,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 mail = Mail(app)
-otp = randint(000000, 999999)
+otp = randint(100000, 999999)
 
 db = SQLAlchemy(app)
 
@@ -139,6 +141,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean(), nullable=False, server_default='0')
     is_staff = db.Column(db.Boolean(), nullable=False, server_default='0')
     active = db.Column('is_active', db.Boolean(), nullable=False, server_default='1')
+    email = db.Column(db.String(100))
 
 
 # Creates database if it doesn't already exist
@@ -147,13 +150,14 @@ db.create_all()
 # username: 'admin' password: 'Admin123' - This will be removed once the first admin is made
 # I might do a bit more with this for eg. If all admins are deleted by mistake - Amy
 p, s = hash_password('Admin123')
-if not User.query.filter(User.id == 'admin_email@example.com').first():
+if not User.query.filter(User.id == 'admin').first():
     user = User(
-        id='admin_email@example.com',
+        id='admin',
         password=p,
         salt=s,
         is_admin = True,
-        is_staff = True
+        is_staff = True,
+        email='admin_email@example.com'
     )
     db.session.add(user)
     db.session.commit()
@@ -174,16 +178,16 @@ def password_check(password):
     uppercase_error = re.search(r"[A-Z]", password) is None
     lowercase_error = re.search(r"[a-z]", password) is None
     symbol_error = re.search(r"[\W]", password) is None
-    password_ok = not ( length_error or digit_error or uppercase_error
-                        or lowercase_error or symbol_error )
+    password_ok = not (length_error or digit_error or uppercase_error
+                       or lowercase_error or symbol_error)
 
     return {
-        'password_ok' : password_ok,
-        'length_error' : length_error,
-        'digit_error' : digit_error,
-        'uppercase_error' : uppercase_error,
-        'lowercase_error' : lowercase_error,
-        'symbol_error' : symbol_error,
+        'password_ok': password_ok,
+        'length_error': length_error,
+        'digit_error': digit_error,
+        'uppercase_error': uppercase_error,
+        'lowercase_error': lowercase_error,
+        'symbol_error': symbol_error,
     }
 
 
@@ -206,7 +210,7 @@ def index():
 # Register new user page
 @app.route('/register/')
 def register_user():
-    return render_template('register.html', subs=build_subs('Register'), error = "")
+    return render_template('register.html', subs=build_subs('Register'), error="")
 
 
 # Handle POST request for new user form
@@ -215,14 +219,13 @@ def register_user_post():
     username = request.form.get('username')
     password = request.form.get('password')
     confirm_password = request.form.get('confirmpassword')
+    email = request.form.get('email')
     errors = password_check(password)
-
-    print(username)
 
     # Check for missing username
     if not username:
         return render_template("register.html",
-                               subs=build_subs('Regsistration failed'),
+                               subs=build_subs('Registration failed'),
                                error="Please enter a username")
 
     # Check for missing password
@@ -233,14 +236,14 @@ def register_user_post():
                                      "least 1 number, 1 uppercase, 1 lowercase, and a special character.")
 
     # Check for mismatched confirmation password
-    elif password != confirm_password:
+    if password != confirm_password:
         return render_template("register.html",
                                subs=build_subs('Registration failed'),
                                error="Passwords did not match. Password must be Min. 8 characters and contain at "
                                      "least 1 number, 1 uppercase, 1 lowercase, and a special character.")
 
     # Checks password meets complexity requirements
-    elif not errors.get("password_ok"):
+    if not errors.get("password_ok"):
         error_string = "<br>"
 
         if errors.get("length_error"):
@@ -266,12 +269,12 @@ def register_user_post():
                                      "1 lowercase, and a special character." + error_string)
 
     # Pass the error back if there is one
-    success, error = register_user(username, password, confirm_password)
+    success, error = register_user(username, password, confirm_password, email)
 
     if success:
-        return render_template('login.html', subs=build_subs("Registration Successful"))
+        return render_template('login.html', subs=build_subs("Registration Successful"), error="")
 
-    return render_template("register.html", subs=build_subs('Regsistration'), error=error)
+    return render_template("register.html", subs=build_subs('Registration'), error=error)
 
 
 # User login page and login form
@@ -286,8 +289,10 @@ def login():
         success = validate_login(username, password)
 
         if success:
-            msg = Message(subject='OTP Verification', sender='developer1ali@gmail.com', recipients=[username])
-            msg.body = 'Your OTP Code is: '+str(otp)+'.'
+            app.otp = randint(100000, 999999)
+            user_row = User.query.filter(User.id == username)[0]
+            msg = Message(subject='OTP Verification', recipients=[user_row.email])
+            msg.body = 'Your OTP Code is: '+str(app.otp)
             mail.send(msg)
             session['username'] = username
             session['password'] = password
@@ -298,18 +303,26 @@ def login():
     elif request.method == 'GET':
         return render_template('login.html', subs=build_subs('Login'), error="")
 
+
+def validate_otp(user_otp):
+    try:
+        if int(user_otp) == app.otp:
+            return True
+    except ValueError:
+        return False
+
+
 @app.route('/OTP', methods=['POST', 'GET'])
 def OTP():
     if request.method == 'POST':
-        global otp
         user_otp = request.form.get('OTP')
         username = session.get('username', None)
         password = session.get('password', None)
         success = validate_login(username, password)
-        if success and otp == int(user_otp):
+        if success and validate_otp(user_otp):
             login_user(get_user(username), remember=True)
-            otp = randint(000000, 999999)
-            return render_template("index.html", subs=build_subs('Home'))
+            filenames = Files.query.all()
+            return render_template("all_files.html", subs=build_subs('Files'), files=filenames)
         else:
             return render_template("OTP.html", subs=build_subs('OTP'), error="Incorrect OTP Code entered")
 
@@ -322,7 +335,7 @@ def OTP():
 @login_required
 def files():
     filenames = Files.query.all()
-    return render_template("all_files.html", subs = build_subs('Files'), files=filenames)
+    return render_template("all_files.html", subs=build_subs('Files'), files=filenames)
 
 
 # Allows user to view only files they have uploaded
@@ -336,7 +349,7 @@ def my_files():
 
     # Get a list of all files where creator id and current logged in user match
     filenames = Files.query.filter(Files.creator_id == current_user.id)
-    return render_template("my_files.html", subs = build_subs('Files'), files=filenames)
+    return render_template("my_files.html", subs=build_subs('Files'), files=filenames)
 
 
 # Allows user to upload files or add a link to an external file, adds file info to the database.
@@ -357,10 +370,10 @@ def upload():
         name = request.form.get('name')
         url = request.form.get('url')
 
-                # Check if user has input a file name when attempting to upload a file
+        # Check if user has input a file name when attempting to upload a file
         if url and not name:
             # Returns error message if no file name provided
-            return render_template("upload.html", subs = build_subs('Upload'),
+            return render_template("upload.html", subs=build_subs('Upload'),
                                    error="No file name entered. Cannot upload file.")
 
         # If url field exists, user is submitting name + url form
@@ -370,7 +383,7 @@ def upload():
                 url=url,
                 created_date=datetime.datetime.now(),
                 creator_id=current_user.id,
-                downloadable = False
+                downloadable=False
             )
             db.session.add(file_obj)
             db.session.commit()
@@ -378,12 +391,12 @@ def upload():
 
         # url field did not exist, user submitting name + file form
         if "file" not in request.files:
-            return render_template("upload.html", subs = build_subs('Upload'), error="File failed to send")
+            return render_template("upload.html", subs=build_subs('Upload'), error="File failed to send")
 
         file = request.files["file"]
         # if user does not select file, browser also submit an empty part without filename
         if file.filename == "":
-            return render_template("upload.html", subs = build_subs('Upload'), error="No file selected")
+            return render_template("upload.html", subs=build_subs('Upload'), error="No file selected")
 
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
@@ -391,7 +404,7 @@ def upload():
 
             file_obj = Files(
                 name=file.filename,
-                url=url_for("download_file", filename=filename),#
+                url=url_for("download_file", filename=filename),
                 created_date=datetime.datetime.now(),
                 creator_id=current_user.id,
                 downloadable=True
@@ -399,9 +412,9 @@ def upload():
             db.session.add(file_obj)
             db.session.commit()
 
-            return render_template("upload.html", subs = build_subs('Upload'), error="File uploaded")
+            return render_template("upload.html", subs=build_subs('Upload'), error="File uploaded")
         else:
-            return render_template("upload.html", subs = build_subs('Upload'), error="File invalid")
+            return render_template("upload.html", subs=build_subs('Upload'), error="File invalid")
 
 
 # Expose uploaded files for downloading
@@ -549,9 +562,9 @@ def admin():
         staff = User.query.filter(User.is_admin == 0, User.is_staff == 1)
         users = User.query.filter(User.is_admin == 0, User.is_staff == 0)
         return render_template('admin.html', subs=build_subs('Admin'), admins=admins, staff=staff, users=users)
-    else:
-        # Redirects to permission denied page if user is not admin.
-        return render_template('permission_denied.html', subs=build_subs('Admin'))
+
+    # Redirects to permission denied page if user is not admin.
+    return render_template('permission_denied.html', subs=build_subs('Admin'))
 
 
 # Admin panel user management
@@ -582,7 +595,7 @@ def admin_functions(action, level, id):
             # Don't demote the last admin
             if user.is_admin:
                 if len(User.query.filter(User.is_admin == True).all()) <= 1:
-                    return render_template("error.html", subs=build_subs("Error"), 
+                    return render_template("error.html", subs=build_subs("Error"),
                                     header="Action Failed", message="Unable to delete last remaining admin.")
             user.is_admin = False
         if level == 'user':
@@ -636,7 +649,7 @@ def validate_login(username, password):
     return True
 
 
-def register_user(username, password, confirm_password):
+def register_user(username, password, confirm_password, email):
 
     q = User.query.filter(User.id == username)
 
@@ -652,13 +665,13 @@ def register_user(username, password, confirm_password):
 
     pass_and_salt = hash_password(password)
 
-    if insert_new_user(username, pass_and_salt[0], pass_and_salt[1]):
+    if insert_new_user(username, pass_and_salt[0], pass_and_salt[1], email):
         return True, "Success"
     else:
         return False, "Adding to database failed"
 
 
-def insert_new_user(username, password, salt):
+def insert_new_user(username, password, salt, email):
 
     if not User.query.filter(User.id == username).first():
         user = User(
@@ -667,6 +680,7 @@ def insert_new_user(username, password, salt):
             salt = salt,
             is_admin = False,
             is_staff = False,
+            email = email
         )
         db.session.add(user)
         db.session.commit()
