@@ -94,9 +94,9 @@ class ConfigClass(object):
     # Mail server settings
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 465
-    MAIL_USERNAME = 'sender_email@gmail.com'
+    MAIL_USERNAME = 'sender_email@example.com'
     MAIL_PASSWORD = "SenderEmailPassword"
-    MAIL_DEFAULT_SENDER = 'sender_email@gmail.com'
+    MAIL_DEFAULT_SENDER = 'sender_email@example.com'
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True
 
@@ -146,10 +146,11 @@ class User(UserMixin, db.Model):
 
 # Creates database if it doesn't already exist
 db.create_all()
+
 # Hardcode an admin user into the database
-# username: 'admin' password: 'Admin123' - This will be removed once the first admin is made
-# I might do a bit more with this for eg. If all admins are deleted by mistake - Amy
-p, s = hash_password('Admin123')
+# username: 'admin' password: 'Admin123!' 
+# This is just for the initial setup and will be removed once the first admin is made
+p, s = hash_password('Admin123!')
 if not User.query.filter(User.id == 'admin').first():
     user = User(
         id='admin',
@@ -418,6 +419,8 @@ def upload():
 
 # Expose uploaded files for downloading
 @app.route("/downloads/<filename>")
+# Requires a user to be logged in, if user is not logged in redirects to permission denied page
+@login_required
 def download_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
