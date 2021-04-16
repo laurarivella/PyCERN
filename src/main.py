@@ -94,9 +94,9 @@ class ConfigClass(object):
     # Mail server settings
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 465
-    MAIL_USERNAME = 'rsdebicccd@gmail.com'
-    MAIL_PASSWORD = "b^pcb@*r56@2*bq6"
-    MAIL_DEFAULT_SENDER = 'rsdebicccd@gmail.com'
+    MAIL_USERNAME = 'sender_email@gmail.com'
+    MAIL_PASSWORD = "SenderEmailPassword"
+    MAIL_DEFAULT_SENDER = 'sender_email@gmail.com'
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True
 
@@ -157,7 +157,7 @@ if not User.query.filter(User.id == 'admin').first():
         salt=s,
         is_admin = True,
         is_staff = True,
-        email='admin_email@example.com'
+        email='admin@example.com'
     )
     db.session.add(user)
     db.session.commit()
@@ -272,7 +272,7 @@ def register_user_post():
     success, error = register_user(username, password, confirm_password, email)
 
     if success:
-        return render_template('login.html', subs=build_subs("Registration Successful"), error="")
+         return render_template('login.html', subs=build_subs("Registration Successful"), error="")
 
     return render_template("register.html", subs=build_subs('Registration'), error=error)
 
@@ -296,7 +296,7 @@ def login():
             mail.send(msg)
             session['username'] = username
             session['password'] = password
-            return render_template("OTP.html",subs=build_subs('Login'))
+            return redirect('/otp')
         return render_template("login.html", subs=build_subs('Home'), error="Login failed. Please try again.")
 
     # Display HTML login form
@@ -312,7 +312,7 @@ def validate_otp(user_otp):
         return False
 
 
-@app.route('/OTP', methods=['POST', 'GET'])
+@app.route('/otp', methods=['POST', 'GET'])
 def OTP():
     if request.method == 'POST':
         user_otp = request.form.get('OTP')
@@ -322,9 +322,8 @@ def OTP():
         if success and validate_otp(user_otp):
             login_user(get_user(username), remember=True)
             filenames = Files.query.all()
-            return render_template("all_files.html", subs=build_subs('Files'), files=filenames)
-        else:
-            return render_template("OTP.html", subs=build_subs('OTP'), error="Incorrect OTP Code entered")
+            return redirect('/')
+        return render_template("OTP.html", subs=build_subs('OTP'), error="Incorrect OTP Code entered")
 
     elif request.method == 'GET':
         return render_template('OTP.html', subs=build_subs('Login'))
@@ -345,7 +344,7 @@ def files():
 def my_files():
     # Checks user has either 'staff' or 'admin' role, redirects to permission denied page if they do not.
     if not (current_user.is_staff or current_user.is_admin):
-        return render_template('permission_denied.html', subs=build_subs('My Files'))
+        return redirect('/permission_denied')
 
     # Get a list of all files where creator id and current logged in user match
     filenames = Files.query.filter(Files.creator_id == current_user.id)
@@ -359,7 +358,7 @@ def my_files():
 def upload():
     # Checks user has either 'staff' or 'admin' role, redirects to permission denied page if they do not.
     if not (current_user.is_staff or current_user.is_admin):
-        return render_template('permission_denied.html', subs=build_subs('Upload'))
+        return redirect('/permission_denied')
 
     if request.method == 'GET':
         # return form for uploading a file
@@ -467,7 +466,7 @@ def delete(id):
 def delete_multiple():
     # Checks user has either 'staff' or 'admin' role, redirects to permission denied page if they do not.
     if not (current_user.is_staff or current_user.is_admin):
-        redirect('/permission_denied')
+        return redirect('/permission_denied')
     if request.method == 'POST':
         # Processing items to delete checkboxes in HTML template
         f = request.form
@@ -564,7 +563,7 @@ def admin():
         return render_template('admin.html', subs=build_subs('Admin'), admins=admins, staff=staff, users=users)
 
     # Redirects to permission denied page if user is not admin.
-    return render_template('permission_denied.html', subs=build_subs('Admin'))
+    return redirect('/permission_denied')
 
 
 # Admin panel user management
@@ -574,7 +573,7 @@ def admin():
 def admin_functions(action, level, id):
     # Checks current logged in user has 'Admin' role and redirects to permission denied page if user is not admin.
     if current_user.is_admin == 0:
-        return render_template('permission_denied.html', subs=build_subs('Admin'))
+        return redirect('/permission_denied')
 
     user = User.query.filter(User.id == id).first()
 
@@ -697,4 +696,4 @@ def get_user(username):
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
