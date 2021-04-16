@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+{% if error %}
+<div class="alert alert-warning" role="alert">
+    {{ error }}
+</div>
+{% endif %}
+
+<div class="alert alert-primary" role="alert" style="width:100%">
+    Please enter the 6 digit code sent to your email address.
+</div>
+
+<form action="/otp" method="post" style="width:90%; padding-bottom: 10px;">
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label"  style="width:70%">
+        <input class="mdl-textfield__input" type="OTP" name="OTP" id="OTP">
+        <label class="mdl-textfield__label" for="OTP">6 digit code:</label>
+    </div>
+    <!-- Accent-colored raised button -->
+    <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent"  style="width:70%">
+    Login
+   </button>
+</form>
+
+{% endblock %}
